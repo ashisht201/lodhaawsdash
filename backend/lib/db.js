@@ -59,8 +59,12 @@ async function initSchema() {
       service    TEXT,
       state      TEXT,
       az         TEXT,
+      region     TEXT,
       synced_at  TIMESTAMPTZ DEFAULT NOW()
     );
+
+    -- Add region column if upgrading from earlier version
+    ALTER TABLE instances_cache ADD COLUMN IF NOT EXISTS region TEXT;
 
     -- Stores monthly rolled-up metric data per instance
     -- One row per (instance_id, month). Upserted on each sync.
