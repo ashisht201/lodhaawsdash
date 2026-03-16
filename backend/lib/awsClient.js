@@ -1,39 +1,35 @@
 // backend/lib/awsClient.js
-// Credentials come from Render environment variables.
-// AWS_REGIONS = comma-separated list e.g. "ap-south-1,us-east-1"
-// Falls back to AWS_REGION (single region) for backwards compatibility.
+// Accepts an account object from the DB — credentials are decrypted at call time.
+// Falls back to env vars for backwards compatibility during migration.
 const { CloudWatchClient }   = require("@aws-sdk/client-cloudwatch");
 const { CostExplorerClient } = require("@aws-sdk/client-cost-explorer");
 const { EC2Client }          = require("@aws-sdk/client-ec2");
 const { RDSClient }          = require("@aws-sdk/client-rds");
 const { STSClient, GetCallerIdentityCommand } = require("@aws-sdk/client-sts");
+const { decrypt } = require("./crypto");
 
-function creds() {
-  const id     = process.env.AWS_ACCESS_KEY_ID;
-  const secret = process.env.AWS_SECRET_ACCESS_KEY;
-  if (!id || !secret) throw new Error("AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY not set in environment.");
-  return { accessKeyId: id, secretAccessKey: secret };
+// Build credentials object from a DB account row
+function credsFromAccount(account) {
+  return {
+    accessKeyId:     account.access_key_id,
+    secretAccessKey: decrypt(account.secret_key_enc),
+  };
 }
 
-// Returns array of all configured regions
-function getRegions() {
-  const multi  = process.env.AWS_REGIONS;
-  const single = process.env.AWS_REGION;
-  if (multi)  return multi.split(",").map(r => r.trim()).filter(Boolean);
-  if (single) return [single.trim()];
-  return ["us-east-1"];
+// Parse regions from account row
+function regionsFromAccount(account) {
+  return account.regions.split(",").map(r => r.trim()).filter(Boolean);
 }
 
-// Region-specific clients — pass region explicitly
-const cloudwatch   = (region) => new CloudWatchClient({ region, credentials: creds() });
-const costExplorer = ()       => new CostExplorerClient({ region: "us-east-1", credentials: creds() });
-const ec2          = (region) => new EC2Client({ region, credentials: creds() });
-const rds          = (region) => new RDSClient({ region, credentials: creds() });
+const cloudwatch   = (account, region) => new CloudWatchClient({ region, credentials: credsFromAccount(account) });
+const costExplorer = (account)         => new CostExplorerClient({ region: "us-east-1", credentials: credsFromAccount(account) });
+const ec2          = (account, region) => new EC2Client({ region, credentials: credsFromAccount(account) });
+const rds          = (account, region) => new RDSClient({ region, credentials: credsFromAccount(account) });
 
-async function validateCreds() {
-  const regions = getRegions();
-  const sts = new STSClient({ region: regions[0], credentials: creds() });
+async function validateAccount(account) {
+  const regions = regionsFromAccount(account);
+  const sts = new STSClient({ region: regions[0], credentials: credsFromAccount(account) });
   return sts.send(new GetCallerIdentityCommand({}));
 }
 
-module.exports = { cloudwatch, costExplorer, ec2, rds, validateCreds, getRegions };
+module.exports = { cloudwatch, costExplorer, ec2, rds, validateAccount, regionsFromAccount };

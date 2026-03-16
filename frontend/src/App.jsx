@@ -2,31 +2,31 @@
 import { useState, useEffect } from "react";
 import { api, saveToken, clearToken } from "./api.js";
 import { Toast } from "./components/ui.jsx";
-import SyncBadge  from "./components/SyncBadge.jsx";
-import LoginPage   from "./pages/LoginPage.jsx";
-import Dashboard   from "./pages/Dashboard.jsx";
-import TagsPage    from "./pages/TagsPage.jsx";
-import AlertsPage  from "./pages/AlertsPage.jsx";
-import UsersPage   from "./pages/UsersPage.jsx";
+import SyncBadge       from "./components/SyncBadge.jsx";
+import LoginPage       from "./pages/LoginPage.jsx";
+import Dashboard       from "./pages/Dashboard.jsx";
+import TagsPage        from "./pages/TagsPage.jsx";
+import AlertsPage      from "./pages/AlertsPage.jsx";
+import UsersPage       from "./pages/UsersPage.jsx";
+import CredentialsPage from "./pages/CredentialsPage.jsx";
 
 export default function App() {
-  const [user,    setUser]    = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [page,    setPage]    = useState("dashboard");
-  const [toast,   setToast]   = useState(null);
-
-  // tags: { instanceId: { label, environment, owner, websites, purpose } }
+  const [user,     setUser]     = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [page,     setPage]     = useState("dashboard");
+  const [toast,    setToast]    = useState(null);
   const [tags,     setTags]     = useState({});
   const [comments, setComments] = useState([]);
+  const [accounts, setAccounts] = useState([]);
 
   function showToast(msg, type = "ok") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }
 
-  // Helper — get friendly label for an instance
   function getLabel(instanceId) {
-    return tags[instanceId]?.label || instanceId;
+    const t = tags[instanceId];
+    return (typeof t === "object" ? t?.label : t) || instanceId;
   }
 
   useEffect(() => {
@@ -37,12 +37,14 @@ export default function App() {
   }, []);
 
   async function loadSharedData() {
-    const [t, c] = await Promise.all([
+    const [t, c, a] = await Promise.all([
       api.getTags().catch(() => ({})),
       api.getComments("").catch(() => []),
+      api.listAccounts().catch(() => []),
     ]);
     setTags(t);
     setComments(c);
+    setAccounts(a);
   }
 
   async function handleLogin(username, password) {
@@ -54,9 +56,7 @@ export default function App() {
 
   function handleLogout() {
     clearToken();
-    setUser(null);
-    setTags({});
-    setComments([]);
+    setUser(null); setTags({}); setComments([]); setAccounts([]);
     setPage("dashboard");
   }
 
@@ -78,23 +78,24 @@ export default function App() {
     showToast("Comment deleted.");
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400 text-sm">Loading…</div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-gray-400 text-sm">Loading…</div>
+    </div>
+  );
 
   if (!user) return <LoginPage onLogin={handleLogin}/>;
 
   const isAdmin = user.role === "admin";
 
   const NAV = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "tags",      label: "Tags",       icon: "🏷️" },
-    { id: "alerts",    label: "Alerts",     icon: "🔔" },
-    ...(isAdmin ? [{ id: "users", label: "Users", icon: "👥" }] : []),
+    { id: "dashboard",   label: "Dashboard",   icon: "📊" },
+    { id: "tags",        label: "Tags",         icon: "🏷️" },
+    { id: "alerts",      label: "Alerts",       icon: "🔔" },
+    ...(isAdmin ? [
+      { id: "credentials", label: "Credentials", icon: "🔑" },
+      { id: "users",       label: "Users",        icon: "👥" },
+    ] : []),
   ];
 
   const sharedProps = { tags, getLabel, isAdmin, showToast };
@@ -113,7 +114,7 @@ export default function App() {
           {NAV.map(n => (
             <button key={n.id} onClick={() => setPage(n.id)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                page === n.id ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                page === n.id ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-100"
               }`}>
               <span>{n.icon}</span>{n.label}
             </button>
@@ -138,13 +139,12 @@ export default function App() {
         <div className="mb-5">
           <h2 className="text-lg font-bold text-gray-800">{NAV.find(n => n.id === page)?.label}</h2>
         </div>
-        {page === "dashboard" && (
-          <Dashboard {...sharedProps} comments={comments}
-            onAddComment={handleAddComment} onDeleteComment={handleDeleteComment}/>
-        )}
-        {page === "tags"      && <TagsPage  {...sharedProps} onSaveTags={handleSaveTags}/>}
-        {page === "alerts"    && <AlertsPage {...sharedProps}/>}
-        {page === "users"     && isAdmin && <UsersPage currentUser={user.username} showToast={showToast}/>}
+        {page === "dashboard"   && <Dashboard {...sharedProps} accounts={accounts} comments={comments}
+                                    onAddComment={handleAddComment} onDeleteComment={handleDeleteComment}/>}
+        {page === "tags"        && <TagsPage  {...sharedProps} onSaveTags={handleSaveTags}/>}
+        {page === "alerts"      && <AlertsPage {...sharedProps}/>}
+        {page === "credentials" && isAdmin && <CredentialsPage showToast={showToast}/>}
+        {page === "users"       && isAdmin && <UsersPage currentUser={user.username} showToast={showToast}/>}
       </main>
 
       <Toast toast={toast}/>

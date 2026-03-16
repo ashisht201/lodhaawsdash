@@ -2,44 +2,41 @@
 const router = require("express").Router();
 const { requireAuth, requireAdmin } = require("../middleware/auth");
 const { runSync, getLastSync, isSyncRunning } = require("../lib/syncEngine");
+const { pool } = require("../lib/db");
 
 router.use(requireAuth);
 
-// GET /api/sync/status  — last sync info for dashboard header
+// GET /api/sync/status
 router.get("/status", async (req, res) => {
   try {
     const last    = await getLastSync();
     const running = await isSyncRunning();
     res.json({ last, running });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/sync/trigger  — manual sync (admin only)
+// POST /api/sync/trigger?accountId=N  — optional accountId for per-account sync
 router.post("/trigger", requireAdmin, async (req, res) => {
   try {
     const running = await isSyncRunning();
     if (running) return res.status(409).json({ error: "Sync already in progress" });
-    // Fire and forget — respond immediately, sync runs in background
+    const accountId = req.query.accountId ? parseInt(req.query.accountId) : null;
     res.json({ ok: true, message: "Sync started" });
-    runSync().catch(e => console.error("[sync/trigger]", e.message));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    runSync(accountId).catch(e => console.error("[sync/trigger]", e.message));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/sync/history  — last 10 sync runs (admin only)
+// GET /api/sync/history
 router.get("/history", requireAdmin, async (req, res) => {
   try {
-    const { pool } = require("../lib/db");
-    const { rows } = await pool.query(
-      "SELECT * FROM sync_log ORDER BY started_at DESC LIMIT 10"
-    );
+    const { rows } = await pool.query(`
+      SELECT s.*, a.display_name AS account_name
+      FROM sync_log s
+      LEFT JOIN accounts a ON a.id = s.account_id
+      ORDER BY s.started_at DESC LIMIT 20
+    `);
     res.json(rows);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

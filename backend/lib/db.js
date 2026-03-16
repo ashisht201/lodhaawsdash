@@ -18,6 +18,18 @@ async function initSchema() {
       created_at    TIMESTAMPTZ DEFAULT NOW()
     );
 
+    -- Stores AWS account credentials (secret_key is AES-256-GCM encrypted)
+    CREATE TABLE IF NOT EXISTS accounts (
+      id             SERIAL PRIMARY KEY,
+      display_name   TEXT NOT NULL,
+      aws_account_id TEXT,
+      regions        TEXT NOT NULL,   -- comma-separated e.g. "ap-south-1,us-east-1"
+      access_key_id  TEXT NOT NULL,
+      secret_key_enc TEXT NOT NULL,   -- encrypted with CREDENTIAL_SECRET
+      active         BOOLEAN DEFAULT TRUE,
+      created_at     TIMESTAMPTZ DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS tags (
       id          SERIAL PRIMARY KEY,
       instance_id TEXT NOT NULL,
@@ -30,7 +42,6 @@ async function initSchema() {
       UNIQUE(instance_id)
     );
 
-    -- Add new columns if upgrading from earlier version
     ALTER TABLE tags ADD COLUMN IF NOT EXISTS label       TEXT;
     ALTER TABLE tags ADD COLUMN IF NOT EXISTS environment TEXT;
     ALTER TABLE tags ADD COLUMN IF NOT EXISTS owner       TEXT;
@@ -61,21 +72,24 @@ async function initSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS instances_cache (
-      id        TEXT PRIMARY KEY,
-      aws_name  TEXT,
-      type      TEXT,
-      service   TEXT,
-      state     TEXT,
-      az        TEXT,
-      region    TEXT,
-      synced_at TIMESTAMPTZ DEFAULT NOW()
+      id          TEXT PRIMARY KEY,
+      account_id  INTEGER REFERENCES accounts(id) ON DELETE CASCADE,
+      aws_name    TEXT,
+      type        TEXT,
+      service     TEXT,
+      state       TEXT,
+      az          TEXT,
+      region      TEXT,
+      synced_at   TIMESTAMPTZ DEFAULT NOW()
     );
 
-    ALTER TABLE instances_cache ADD COLUMN IF NOT EXISTS region TEXT;
+    ALTER TABLE instances_cache ADD COLUMN IF NOT EXISTS region     TEXT;
+    ALTER TABLE instances_cache ADD COLUMN IF NOT EXISTS account_id INTEGER;
 
     CREATE TABLE IF NOT EXISTS metrics_cache (
       id             SERIAL PRIMARY KEY,
       instance_id    TEXT NOT NULL,
+      account_id     INTEGER,
       month          TEXT NOT NULL,
       bandwidth      NUMERIC,
       cpu            NUMERIC,
@@ -87,14 +101,19 @@ async function initSchema() {
       UNIQUE(instance_id, month)
     );
 
+    ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS account_id INTEGER;
+
     CREATE TABLE IF NOT EXISTS sync_log (
       id               SERIAL PRIMARY KEY,
+      account_id       INTEGER,
       started_at       TIMESTAMPTZ DEFAULT NOW(),
       finished_at      TIMESTAMPTZ,
       status           TEXT DEFAULT 'running',
       instances_synced INT DEFAULT 0,
       error_msg        TEXT
     );
+
+    ALTER TABLE sync_log ADD COLUMN IF NOT EXISTS account_id INTEGER;
   `);
   console.log("[db] Schema ready.");
 }

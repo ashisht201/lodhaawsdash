@@ -81,7 +81,7 @@ function CustomTooltip({ active, payload, label, comments, getLabel }) {
   );
 }
 
-export default function Dashboard({ tags, getLabel, comments, onAddComment, onDeleteComment, isAdmin }) {
+export default function Dashboard({ tags, getLabel, comments, onAddComment, onDeleteComment, isAdmin, accounts = [] }) {
   const [allInstances,  setAllInstances]  = useState([]);
   const [selected,      setSelected]      = useState([]);
   const [datePreset,    setDatePreset]    = useState("year");
@@ -99,6 +99,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
   const [filterRegion,  setFilterRegion]  = useState("");
   const [filterType,    setFilterType]    = useState("");
   const [filterWebsite, setFilterWebsite] = useState("");
+  const [filterAccount, setFilterAccount] = useState("");
 
   const range = datePreset === "custom"
     ? { start: customStart, end: customEnd }
@@ -142,6 +143,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
       if (filterOwner   && (t.owner       || "") !== filterOwner)      return false;
       if (filterRegion  && (inst.region   || "") !== filterRegion)     return false;
       if (filterType    && (inst.type     || "") !== filterType)        return false;
+      if (filterAccount && String(inst.accountId) !== String(filterAccount)) return false;
       if (filterWebsite) {
         const sites = (t.websites || "").toLowerCase();
         if (!sites.includes(filterWebsite.toLowerCase()))              return false;
@@ -360,6 +362,17 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
             </select>
           </div>
 
+          {/* Account filter */}
+          {accounts.length > 1 && (
+            <div className="min-w-[160px]">
+              <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Account</label>
+              <select value={filterAccount} onChange={e => setFilterAccount(e.target.value)} className={filterInputClass}>
+                <option value="">All Accounts</option>
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.display_name}</option>)}
+              </select>
+            </div>
+          )}
+
           {/* Website search */}
           <div className="min-w-[160px]">
             <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Website</label>
@@ -368,7 +381,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
           </div>
 
           {/* Clear filters */}
-          {(filterEnv || filterOwner || filterRegion || filterType || filterWebsite) && (
+          {(filterEnv || filterOwner || filterRegion || filterType || filterWebsite || filterAccount) && (
             <div className="self-end">
               <button onClick={() => { setFilterEnv(""); setFilterOwner(""); setFilterRegion(""); setFilterType(""); setFilterWebsite(""); }}
                 className="text-xs text-gray-400 hover:text-red-500 px-3 py-2 rounded-lg border border-gray-200 hover:border-red-200 transition-colors">
@@ -421,6 +434,9 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
                             </p>
                             <p className="text-gray-400 mt-0.5">{inst.type}</p>
                             <p className="text-gray-400">{inst.region}</p>
+                            {accounts.length > 1 && (
+                              <p className="text-gray-300 text-[10px] truncate">{inst.accountName || ""}</p>
+                            )}
                             <div className="mt-1"><Badge text={inst.state}/></div>
                           </div>
                         </button>

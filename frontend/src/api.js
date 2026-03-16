@@ -18,32 +18,36 @@ async function req(method, path, body) {
 
 export const api = {
   // Auth
-  login:         (username, password) => req("POST", "/auth/login", { username, password }),
-  me:            ()                   => req("GET",  "/auth/me"),
-  changePassword:(cur, next)          => req("POST", "/auth/change-password", { currentPassword: cur, newPassword: next }),
-  // User management
-  listUsers:     ()                   => req("GET",  "/auth/users"),
-  createUser:    (username, password) => req("POST", "/auth/users", { username, password }),
-  deleteUser:    (id)                 => req("DELETE",`/auth/users/${id}`),
-  resetPassword: (id, newPassword)    => req("POST", `/auth/users/${id}/reset-password`, { newPassword }),
+  login:          (u, p)    => req("POST", "/auth/login", { username: u, password: p }),
+  me:             ()        => req("GET",  "/auth/me"),
+  changePassword: (cur,nxt) => req("POST", "/auth/change-password", { currentPassword: cur, newPassword: nxt }),
+  listUsers:      ()        => req("GET",  "/auth/users"),
+  createUser:     (u, p)    => req("POST", "/auth/users", { username: u, password: p }),
+  deleteUser:     (id)      => req("DELETE",`/auth/users/${id}`),
+  resetPassword:  (id, p)   => req("POST", `/auth/users/${id}/reset-password`, { newPassword: p }),
+  // Accounts
+  listAccounts:   ()        => req("GET",  "/accounts"),
+  addAccount:     (body)    => req("POST", "/accounts", body),
+  toggleAccount:  (id)      => req("PATCH",`/accounts/${id}/toggle`),
+  deleteAccount:  (id)      => req("DELETE",`/accounts/${id}`),
   // Metrics
-  instances:     ()                              => req("GET", "/metrics/instances"),
-  monthly:       (instanceId, start, end)        => req("GET", `/metrics/monthly?instanceId=${encodeURIComponent(instanceId)}&start=${start}&end=${end}`),
-  validateAWS:   ()                              => req("GET", "/metrics/validate"),
-  // Tags — now returns { instanceId: { label, environment, owner, websites, purpose } }
-  getTags:       ()       => req("GET", "/tags"),
-  saveTags:      (map)    => req("PUT", "/tags", map),
+  instances:      (accountId) => req("GET", `/metrics/instances${accountId ? `?accountId=${accountId}` : ""}`),
+  monthly:        (instanceId, start, end) => req("GET", `/metrics/monthly?instanceId=${encodeURIComponent(instanceId)}&start=${start}&end=${end}`),
+  validateAWS:    (accountId) => req("GET", `/metrics/validate?accountId=${accountId}`),
+  // Tags
+  getTags:        ()       => req("GET", "/tags"),
+  saveTags:       (map)    => req("PUT", "/tags", map),
   // Comments
-  getComments:   (instanceId) => req("GET", `/comments?instanceId=${encodeURIComponent(instanceId)}`),
-  addComment:    (body)        => req("POST","/comments", body),
-  deleteComment: (id)          => req("DELETE",`/comments/${id}`),
+  getComments:    (instanceId) => req("GET", `/comments?instanceId=${encodeURIComponent(instanceId)}`),
+  addComment:     (body)        => req("POST","/comments", body),
+  deleteComment:  (id)          => req("DELETE",`/comments/${id}`),
   // Alerts
-  getAlerts:     ()             => req("GET", "/alerts"),
-  createAlert:   (body)         => req("POST","/alerts", body),
-  toggleAlert:   (id, active)   => req("PATCH",`/alerts/${id}`, { active }),
-  deleteAlert:   (id)           => req("DELETE",`/alerts/${id}`),
+  getAlerts:      ()            => req("GET", "/alerts"),
+  createAlert:    (body)        => req("POST","/alerts", body),
+  toggleAlert:    (id, active)  => req("PATCH",`/alerts/${id}`, { active }),
+  deleteAlert:    (id)          => req("DELETE",`/alerts/${id}`),
   // Sync
-  syncStatus:    ()    => req("GET",  "/sync/status"),
-  syncTrigger:   ()    => req("POST", "/sync/trigger"),
-  syncHistory:   ()    => req("GET",  "/sync/history"),
+  syncStatus:     ()            => req("GET",  "/sync/status"),
+  syncTrigger:    (accountId)   => req("POST", `/sync/trigger${accountId ? `?accountId=${accountId}` : ""}`),
+  syncHistory:    ()            => req("GET",  "/sync/history"),
 };
