@@ -10,12 +10,12 @@ import AlertsPage  from "./pages/AlertsPage.jsx";
 import UsersPage   from "./pages/UsersPage.jsx";
 
 export default function App() {
-  const [user,    setUser]    = useState(null);   // { username, role }
+  const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [page,    setPage]    = useState("dashboard");
   const [toast,   setToast]   = useState(null);
 
-  // Shared data loaded once after login
+  // tags: { instanceId: { label, environment, owner, websites, purpose } }
   const [tags,     setTags]     = useState({});
   const [comments, setComments] = useState([]);
 
@@ -24,7 +24,11 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   }
 
-  // Verify stored token on mount
+  // Helper — get friendly label for an instance
+  function getLabel(instanceId) {
+    return tags[instanceId]?.label || instanceId;
+  }
+
   useEffect(() => {
     api.me()
       .then(me => { setUser(me); loadSharedData(); })
@@ -87,17 +91,16 @@ export default function App() {
   const isAdmin = user.role === "admin";
 
   const NAV = [
-    { id: "dashboard", label: "Dashboard",  icon: "📊" },
-    { id: "tags",      label: "Tags",        icon: "🏷️" },
-    { id: "alerts",    label: "Alerts",      icon: "🔔" },
+    { id: "dashboard", label: "Dashboard", icon: "📊" },
+    { id: "tags",      label: "Tags",       icon: "🏷️" },
+    { id: "alerts",    label: "Alerts",     icon: "🔔" },
     ...(isAdmin ? [{ id: "users", label: "Users", icon: "👥" }] : []),
   ];
 
-  const pageProps = { tags, isAdmin, showToast };
+  const sharedProps = { tags, getLabel, isAdmin, showToast };
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Header */}
       <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-3">
           <span className="text-xl">☁️</span>
@@ -106,7 +109,6 @@ export default function App() {
             <p className="text-xs text-gray-400">Cost & Usage Monitor</p>
           </div>
         </div>
-
         <nav className="flex items-center gap-1">
           {NAV.map(n => (
             <button key={n.id} onClick={() => setPage(n.id)}
@@ -117,7 +119,6 @@ export default function App() {
             </button>
           ))}
         </nav>
-
         <div className="flex items-center gap-4">
           <SyncBadge isAdmin={isAdmin}/>
           <div className="flex items-center gap-3">
@@ -135,28 +136,15 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-800">
-            {NAV.find(n => n.id === page)?.label}
-          </h2>
+          <h2 className="text-lg font-bold text-gray-800">{NAV.find(n => n.id === page)?.label}</h2>
         </div>
-
         {page === "dashboard" && (
-          <Dashboard
-            {...pageProps}
-            comments={comments}
-            onAddComment={handleAddComment}
-            onDeleteComment={handleDeleteComment}
-          />
+          <Dashboard {...sharedProps} comments={comments}
+            onAddComment={handleAddComment} onDeleteComment={handleDeleteComment}/>
         )}
-        {page === "tags" && (
-          <TagsPage {...pageProps} onSaveTags={handleSaveTags}/>
-        )}
-        {page === "alerts" && (
-          <AlertsPage {...pageProps}/>
-        )}
-        {page === "users" && isAdmin && (
-          <UsersPage currentUser={user.username} showToast={showToast}/>
-        )}
+        {page === "tags"      && <TagsPage  {...sharedProps} onSaveTags={handleSaveTags}/>}
+        {page === "alerts"    && <AlertsPage {...sharedProps}/>}
+        {page === "users"     && isAdmin && <UsersPage currentUser={user.username} showToast={showToast}/>}
       </main>
 
       <Toast toast={toast}/>

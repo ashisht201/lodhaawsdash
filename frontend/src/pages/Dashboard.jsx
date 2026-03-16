@@ -1,5 +1,5 @@
 // frontend/src/pages/Dashboard.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
@@ -28,22 +28,39 @@ const DATE_PRESETS = [
   { value: "custom",    label: "Custom…" },
 ];
 
+// Instance type size order for sorting
+const SIZE_ORDER = [
+  "nano","micro","small","medium","large",
+  "xlarge","2xlarge","4xlarge","8xlarge","12xlarge",
+  "16xlarge","24xlarge","32xlarge","48xlarge","metal",
+];
+function instSizeRank(type = "") {
+  const lower = type.toLowerCase();
+  for (let i = SIZE_ORDER.length - 1; i >= 0; i--) {
+    if (lower.endsWith(SIZE_ORDER[i])) return i;
+  }
+  return -1;
+}
+function sortInstances(instances) {
+  return [...instances].sort((a, b) => instSizeRank(b.type) - instSizeRank(a.type));
+}
+
 function dateRangeFor(preset) {
   const now = new Date(); const fmt = d => d.toISOString().slice(0,10);
   const s = new Date(now);
   switch (preset) {
-    case "week":      s.setDate(now.getDate()-7);            break;
-    case "lastweek":  s.setDate(now.getDate()-14);           break;
-    case "month":     s.setMonth(now.getMonth()-1);          break;
-    case "lastmonth": s.setMonth(now.getMonth()-2);          break;
-    case "quarter":   s.setMonth(now.getMonth()-3);          break;
-    case "year":      s.setFullYear(now.getFullYear()-1);    break;
+    case "week":      s.setDate(now.getDate()-7);         break;
+    case "lastweek":  s.setDate(now.getDate()-14);        break;
+    case "month":     s.setMonth(now.getMonth()-1);       break;
+    case "lastmonth": s.setMonth(now.getMonth()-2);       break;
+    case "quarter":   s.setMonth(now.getMonth()-3);       break;
+    case "year":      s.setFullYear(now.getFullYear()-1); break;
     default:          s.setMonth(now.getMonth()-1);
   }
   return { start: fmt(s), end: fmt(now) };
 }
 
-function CustomTooltip({ active, payload, label, comments }) {
+function CustomTooltip({ active, payload, label, comments, getLabel }) {
   if (!active || !payload?.length) return null;
   const relevant = comments.filter(c => c.month === label);
   return (
@@ -51,7 +68,7 @@ function CustomTooltip({ active, payload, label, comments }) {
       <p className="font-semibold text-gray-700 mb-2">{label}</p>
       {payload.map((p, i) => (
         <div key={i} className="flex justify-between gap-4 mb-1">
-          <span style={{ color: p.color }}>{p.name}</span>
+          <span style={{ color: p.color }}>{getLabel(p.dataKey)}</span>
           <span className="font-medium text-gray-800">{p.value ?? "—"}</span>
         </div>
       ))}
@@ -64,34 +81,82 @@ function CustomTooltip({ active, payload, label, comments }) {
   );
 }
 
-export default function Dashboard({ tags, comments, onAddComment, onDeleteComment, isAdmin }) {
-  const [instances,    setInstances]    = useState([]);
-  const [selected,     setSelected]     = useState([]);   // array of instance objects
-  const [datePreset,   setDatePreset]   = useState("year");
-  const [customStart,  setCustomStart]  = useState("");
-  const [customEnd,    setCustomEnd]    = useState("");
-  const [cache,        setCache]        = useState({});   // instanceId -> monthly data[]
-  const [loadingInst,  setLoadingInst]  = useState(false);
-  const [loadingData,  setLoadingData]  = useState(false);
-  const [commentModal, setCommentModal] = useState(null); // { metric }
-  const [newComment,   setNewComment]   = useState({ metric: "cpu", month: "", body: "" });
+export default function Dashboard({ tags, getLabel, comments, onAddComment, onDeleteComment, isAdmin }) {
+  const [allInstances,  setAllInstances]  = useState([]);
+  const [selected,      setSelected]      = useState([]);
+  const [datePreset,    setDatePreset]    = useState("year");
+  const [customStart,   setCustomStart]   = useState("");
+  const [customEnd,     setCustomEnd]     = useState("");
+  const [cache,         setCache]         = useState({});
+  const [loadingInst,   setLoadingInst]   = useState(false);
+  const [loadingData,   setLoadingData]   = useState(false);
+  const [commentModal,  setCommentModal]  = useState(null);
+  const [newComment,    setNewComment]    = useState({ metric: "cpu", month: "", body: "" });
+
+  // Filters
+  const [filterEnv,     setFilterEnv]     = useState("");
+  const [filterOwner,   setFilterOwner]   = useState("");
+  const [filterRegion,  setFilterRegion]  = useState("");
+  const [filterType,    setFilterType]    = useState("");
+  const [filterWebsite, setFilterWebsite] = useState("");
 
   const range = datePreset === "custom"
     ? { start: customStart, end: customEnd }
     : dateRangeFor(datePreset);
 
-  const getLabel = id => tags[id] || id;
-
-  // Load instance list once
+  // Load instances once
   useEffect(() => {
     setLoadingInst(true);
     api.instances()
-      .then(setInstances)
+      .then(data => setAllInstances(sortInstances(data)))
       .catch(console.error)
       .finally(() => setLoadingInst(false));
   }, []);
 
-  // Fetch metrics for newly selected instances
+  // Build filter option lists from instances + tags
+  const filterOptions = useMemo(() => {
+    const envs    = new Set();
+    const owners  = new Set();
+    const regions = new Set();
+    const types   = new Set();
+    allInstances.forEach(inst => {
+      const t = tags[inst.id] || {};
+      if (t.environment) envs.add(t.environment);
+      if (t.owner)       owners.add(t.owner);
+      if (inst.region)   regions.add(inst.region);
+      if (inst.type)     types.add(inst.type);
+    });
+    return {
+      envs:    [...envs].sort(),
+      owners:  [...owners].sort(),
+      regions: [...regions].sort(),
+      types:   [...types].sort((a,b) => instSizeRank(b) - instSizeRank(a)),
+    };
+  }, [allInstances, tags]);
+
+  // Apply all filters to produce visible instance list
+  const visibleInstances = useMemo(() => {
+    return allInstances.filter(inst => {
+      const t = tags[inst.id] || {};
+      if (filterEnv     && (t.environment || "") !== filterEnv)        return false;
+      if (filterOwner   && (t.owner       || "") !== filterOwner)      return false;
+      if (filterRegion  && (inst.region   || "") !== filterRegion)     return false;
+      if (filterType    && (inst.type     || "") !== filterType)        return false;
+      if (filterWebsite) {
+        const sites = (t.websites || "").toLowerCase();
+        if (!sites.includes(filterWebsite.toLowerCase()))              return false;
+      }
+      return true;
+    });
+  }, [allInstances, tags, filterEnv, filterOwner, filterRegion, filterType, filterWebsite]);
+
+  // When filters change, deselect any instances that are now hidden
+  useEffect(() => {
+    const visibleIds = new Set(visibleInstances.map(i => i.id));
+    setSelected(prev => prev.filter(i => visibleIds.has(i.id)));
+  }, [visibleInstances]);
+
+  // Fetch metrics for selected instances not yet cached
   useEffect(() => {
     if (!selected.length || !range.start || !range.end) return;
     const missing = selected.filter(i => !cache[i.id]);
@@ -104,8 +169,8 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
            .catch(() => ({ id: inst.id, data: [] }))
       )
     ).then(results => {
-      const patch = {};
       const numFields = ["bandwidth","cpu","ram","costServer","costBandwidth","costOther"];
+      const patch = {};
       results.forEach(r => {
         patch[r.id] = r.data.map(row => {
           const clean = { ...row };
@@ -117,7 +182,6 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
     }).finally(() => setLoadingData(false));
   }, [selected, range.start, range.end]);
 
-  // Invalidate cache when date range changes
   useEffect(() => { setCache({}); }, [range.start, range.end]);
 
   function toggleInst(inst) {
@@ -141,7 +205,6 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
     });
   }
 
-  // Available months from loaded data (for comment modal)
   const availableMonths = [...new Set(
     selected.flatMap(inst => (cache[inst.id] || []).map(d => d.month))
   )].sort();
@@ -158,7 +221,7 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
     setNewComment({ metric: "cpu", month: "", body: "" });
   }
 
-  // Summary totals from last data point
+  const n = selected.length || 1;
   const totals = selected.reduce((acc, inst) => {
     const data = cache[inst.id] || [];
     const last = data[data.length - 1] || {};
@@ -167,13 +230,12 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
     acc.cpu           = (acc.cpu           || 0) + (Number(last.cpu)           || 0);
     return acc;
   }, {});
-  const n = selected.length || 1;
 
-  // ── Sub-component: one metric chart ──────────────────────────────────────
+  // ── Sub-component: one metric chart ────────────────────────────────────────
   function MetricChart({ metric }) {
     const meta = METRICS[metric];
     const data = buildChartData(metric);
-    const instComments = comments.filter(c => c.metric === metric);
+    const instComments  = comments.filter(c => c.metric === metric);
     const commentMonths = [...new Set(instComments.map(c => c.month))];
 
     return (
@@ -204,7 +266,7 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false}/>
             <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={44}
               tickFormatter={v => meta.unit === "$" ? `$${v}` : `${v}${meta.unit}`}/>
-            <Tooltip content={<CustomTooltip comments={instComments}/>}/>
+            <Tooltip content={<CustomTooltip comments={instComments} getLabel={getLabel}/>}/>
             <Legend formatter={v => <span className="text-xs text-gray-600">{getLabel(v)}</span>}
               iconType="circle" iconSize={8}/>
             {commentMonths.map(m => (
@@ -212,13 +274,12 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
                 label={{ value: "📌", fontSize: 12, fill: "#F59E0B", position: "top" }}/>
             ))}
             {selected.map((inst, idx) => (
-              <Area key={inst.id} type="monotone" dataKey={inst.id} name={getLabel(inst.id)}
+              <Area key={inst.id} type="monotone" dataKey={inst.id} name={inst.id}
                 stroke={PALETTE[idx % PALETTE.length]} strokeWidth={2}
                 fill={`url(#g${metric}${idx})`} dot={false} activeDot={{ r: 4, strokeWidth: 0 }}/>
             ))}
           </AreaChart>
         </ResponsiveContainer>
-        {/* Comments list under chart */}
         {instComments.length > 0 && (
           <div className="mt-3 space-y-1 border-t border-gray-50 pt-3">
             {instComments.map(c => (
@@ -236,78 +297,146 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
     );
   }
 
+  const filterInputClass = "appearance-none bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100 w-full";
+
   return (
     <div>
-      {/* Controls */}
-      <Card className="p-4 mb-5 flex flex-wrap gap-4 items-end">
-        <div className="min-w-[180px]">
-          <Select label="Date Range" value={datePreset} onChange={e => setDatePreset(e.target.value)}>
-            {DATE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </Select>
+      {/* Controls bar */}
+      <Card className="p-4 mb-5">
+        <div className="flex flex-wrap gap-3 items-end">
+          {/* Date range */}
+          <div className="min-w-[150px]">
+            <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Date Range</label>
+            <select value={datePreset} onChange={e => setDatePreset(e.target.value)} className={filterInputClass}>
+              {DATE_PRESETS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+          </div>
+          {datePreset === "custom" && (
+            <>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Start</label>
+                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className={filterInputClass}/>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">End</label>
+                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className={filterInputClass}/>
+              </div>
+            </>
+          )}
+
+          {/* Environment filter */}
+          <div className="min-w-[130px]">
+            <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Environment</label>
+            <select value={filterEnv} onChange={e => setFilterEnv(e.target.value)} className={filterInputClass}>
+              <option value="">All</option>
+              {filterOptions.envs.map(v => <option key={v}>{v}</option>)}
+            </select>
+          </div>
+
+          {/* Owner filter */}
+          <div className="min-w-[130px]">
+            <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Owner</label>
+            <select value={filterOwner} onChange={e => setFilterOwner(e.target.value)} className={filterInputClass}>
+              <option value="">All</option>
+              {filterOptions.owners.map(v => <option key={v}>{v}</option>)}
+            </select>
+          </div>
+
+          {/* Region filter */}
+          <div className="min-w-[140px]">
+            <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Region</label>
+            <select value={filterRegion} onChange={e => setFilterRegion(e.target.value)} className={filterInputClass}>
+              <option value="">All</option>
+              {filterOptions.regions.map(v => <option key={v}>{v}</option>)}
+            </select>
+          </div>
+
+          {/* Type filter */}
+          <div className="min-w-[140px]">
+            <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Type</label>
+            <select value={filterType} onChange={e => setFilterType(e.target.value)} className={filterInputClass}>
+              <option value="">All</option>
+              {filterOptions.types.map(v => <option key={v}>{v}</option>)}
+            </select>
+          </div>
+
+          {/* Website search */}
+          <div className="min-w-[160px]">
+            <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Website</label>
+            <input type="text" placeholder="Search websites…" value={filterWebsite}
+              onChange={e => setFilterWebsite(e.target.value)} className={filterInputClass}/>
+          </div>
+
+          {/* Clear filters */}
+          {(filterEnv || filterOwner || filterRegion || filterType || filterWebsite) && (
+            <div className="self-end">
+              <button onClick={() => { setFilterEnv(""); setFilterOwner(""); setFilterRegion(""); setFilterType(""); setFilterWebsite(""); }}
+                className="text-xs text-gray-400 hover:text-red-500 px-3 py-2 rounded-lg border border-gray-200 hover:border-red-200 transition-colors">
+                Clear filters
+              </button>
+            </div>
+          )}
+
+          {loadingData && <p className="text-xs text-gray-400 self-center animate-pulse ml-2">Fetching data…</p>}
         </div>
-        {datePreset === "custom" && (
-          <>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Start</label>
-              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
-                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"/>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">End</label>
-              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
-                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"/>
-            </div>
-          </>
-        )}
-        {loadingData && <p className="text-xs text-gray-400 self-center animate-pulse">Fetching AWS data…</p>}
       </Card>
 
       <div className="flex gap-5">
-        {/* Instance sidebar */}
-        <div className="w-60 shrink-0">
-          <Card className="p-4 sticky top-4">
+        {/* Instance sidebar — scrollable, sorted by size desc */}
+        <div className="w-64 shrink-0">
+          <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <SectionTitle>Instances</SectionTitle>
+              <SectionTitle>
+                Instances
+                {visibleInstances.length !== allInstances.length && (
+                  <span className="ml-1 text-blue-400">({visibleInstances.length})</span>
+                )}
+              </SectionTitle>
               <div className="flex gap-2 text-xs">
-                <button onClick={() => setSelected(instances)} className="text-blue-500 hover:underline">All</button>
+                <button onClick={() => setSelected(visibleInstances)} className="text-blue-500 hover:underline">All</button>
                 <button onClick={() => setSelected([])} className="text-gray-400 hover:underline">None</button>
               </div>
             </div>
-            {loadingInst
-              ? <Spinner text="Loading…"/>
-              : !instances.length
-                ? <p className="text-xs text-gray-400">No instances found</p>
-                : instances.map((inst, idx) => {
-                    const sel = !!selected.find(i => i.id === inst.id);
-                    return (
-                      <button key={inst.id} onClick={() => toggleInst(inst)}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg text-xs mb-1 flex items-start gap-2 transition-all ${sel ? "bg-blue-50 border border-blue-200" : "bg-gray-50 border border-transparent hover:bg-gray-100"}`}>
-                        <span className="mt-0.5 w-2 h-2 rounded-full shrink-0"
-                          style={{ background: sel ? PALETTE[instances.indexOf(inst) % PALETTE.length] : "#D1D5DB" }}/>
-                        <div className="min-w-0">
-                          <p className={`font-medium truncate ${sel ? "text-blue-700" : "text-gray-700"}`}>
-                            {tags[inst.id]
-                              ? tags[inst.id]
-                              : <span className="font-mono text-gray-500 text-[10px]">{inst.id.slice(0, 19)}…</span>
-                            }
-                          </p>
-                          <p className="text-gray-400 mt-0.5">{inst.service} · {inst.type}</p>
-                          <div className="mt-1"><Badge text={inst.state}/></div>
-                        </div>
-                      </button>
-                    );
-                  })
-            }
+
+            {/* Scrollable list */}
+            <div className="overflow-y-auto max-h-[calc(100vh-280px)] space-y-1 pr-1">
+              {loadingInst
+                ? <Spinner text="Loading…"/>
+                : !visibleInstances.length
+                  ? <p className="text-xs text-gray-400 text-center py-4">No instances match filters</p>
+                  : visibleInstances.map((inst, idx) => {
+                      const sel = !!selected.find(i => i.id === inst.id);
+                      const globalIdx = allInstances.findIndex(i => i.id === inst.id);
+                      return (
+                        <button key={inst.id} onClick={() => toggleInst(inst)}
+                          className={`w-full text-left px-3 py-2.5 rounded-lg text-xs mb-1 flex items-start gap-2 transition-all ${sel ? "bg-blue-50 border border-blue-200" : "bg-gray-50 border border-transparent hover:bg-gray-100"}`}>
+                          <span className="mt-0.5 w-2 h-2 rounded-full shrink-0"
+                            style={{ background: sel ? PALETTE[globalIdx % PALETTE.length] : "#D1D5DB" }}/>
+                          <div className="min-w-0">
+                            <p className={`font-medium truncate ${sel ? "text-blue-700" : "text-gray-700"}`}>
+                              {tags[inst.id]?.label
+                                ? tags[inst.id].label
+                                : <span className="font-mono text-gray-500 text-[10px]">{inst.id.slice(0,19)}…</span>
+                              }
+                            </p>
+                            <p className="text-gray-400 mt-0.5">{inst.type}</p>
+                            <p className="text-gray-400">{inst.region}</p>
+                            <div className="mt-1"><Badge text={inst.state}/></div>
+                          </div>
+                        </button>
+                      );
+                    })
+              }
+            </div>
           </Card>
         </div>
 
-        {/* Charts area */}
+        {/* Charts */}
         <div className="flex-1 min-w-0">
           {!selected.length
             ? <EmptyState icon="📊" message="Select one or more instances to view metrics"/>
             : (
               <>
-                {/* Summary cards */}
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   {[
                     { label: "Server Cost (last mo.)", value: `$${totals.costServer?.toFixed(2)||"0.00"}` },

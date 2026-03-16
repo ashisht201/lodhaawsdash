@@ -25,7 +25,7 @@ export default function AlertsPage({ tags, isAdmin, showToast }) {
     api.instances().then(setInstances).catch(console.error);
   }, []);
 
-  const getLabel = id => tags[id] || id;
+  const getLabel = id => (typeof tags[id] === 'object' ? tags[id]?.label : tags[id]) || id;
   const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }));
 
   async function create() {
