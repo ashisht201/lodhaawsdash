@@ -228,9 +228,9 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
               ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,220,255,0.06)"/>
-            <XAxis dataKey="month" tick={{ fontFamily:"var(--font-mono)", fontSize:10, fill:"var(--text-muted)" }} axisLine={false} tickLine={false}/>
-            <YAxis tick={{ fontFamily:"var(--font-mono)", fontSize:10, fill:"var(--text-muted)" }} axisLine={false} tickLine={false} width={44}
-              tickFormatter={v => meta.unit === "$" ? `$${v}` : `${v}${meta.unit}`}/>
+            <XAxis dataKey="month" tick={{ fontFamily:"var(--font-mono)", fontSize:10, fill:"#4d7a96" }} axisLine={false} tickLine={false}/>
+            <YAxis tick={{ fontFamily:"var(--font-mono)", fontSize:10, fill:"#4d7a96" }} axisLine={false} tickLine={false} width={44}
+              tickFormatter={v => meta.unit === "$" ? `$${v}` : `${v}`}/>
             <Tooltip content={<CustomTooltip comments={instComments} getLabel={getLabel}/>}/>
             <Legend formatter={v => <span style={{ fontFamily:"var(--font-mono)", fontSize:"0.6rem", color:"var(--text-secondary)" }}>{getLabel(v)}</span>}
               iconType="circle" iconSize={6}/>
