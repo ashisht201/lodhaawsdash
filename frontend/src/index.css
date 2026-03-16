@@ -455,7 +455,7 @@ body {
 }
 .noc-table tr:hover td { background: rgba(0,220,255,0.04); }
 .noc-table tbody tr { background: transparent !important; }
-.noc-table tbody tr:nth-child(even) { background: rgba(0,220,255,0.015) !important; }
+.noc-table tbody tr:nth-child(even) { background: transparent !important; }
 .noc-table .mono { font-family: var(--font-mono); font-size: 0.714rem; color: var(--cyan-dim); }
 
 /* ══════════════════════════════════════════════════════════════

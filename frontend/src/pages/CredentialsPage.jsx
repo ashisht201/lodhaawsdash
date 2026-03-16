@@ -86,7 +86,7 @@ export default function CredentialsPage({ showToast }) {
             </thead>
             <tbody>
               {accounts.map((acc, i) => (
-                <tr key={acc.id} className={`border-b border-gray-50 ${i%2===0?"bg-white":"bg-gray-50/40"}`}>
+                <tr key={acc.id} className="border-b border-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-700">{acc.display_name}</td>
                   <td className="px-5 py-3 font-mono text-xs text-gray-500">{acc.aws_account_id || "—"}</td>
                   <td className="px-5 py-3 text-xs text-gray-500">{acc.regions}</td>

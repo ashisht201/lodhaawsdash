@@ -70,7 +70,7 @@ export default function TagsPage({ tags, onSaveTags, isAdmin }) {
             </thead>
             <tbody>
               {instances.map((inst, i) => (
-                <tr key={inst.id} className={`border-b border-gray-50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
+                <tr key={inst.id} className="border-b border-gray-50">
                   <td className="px-3 py-2 font-mono text-gray-500 whitespace-nowrap">{inst.id}</td>
                   <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{inst.service}</td>
                   <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{inst.type}</td>

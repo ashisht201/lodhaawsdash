@@ -82,7 +82,7 @@ export default function UsersPage({ currentUser, showToast }) {
             </thead>
             <tbody>
               {users.map((u, i) => (
-                <tr key={u.id} className={`border-b border-gray-50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
+                <tr key={u.id} className="border-b border-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-700">
                     {u.username}
                     {u.username === currentUser && <span className="ml-2 text-xs text-gray-400">(you)</span>}

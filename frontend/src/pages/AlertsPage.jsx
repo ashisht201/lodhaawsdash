@@ -77,7 +77,7 @@ export default function AlertsPage({ tags, isAdmin, showToast }) {
               </thead>
               <tbody>
                 {alerts.map((a, i) => (
-                  <tr key={a.id} className={`border-b border-gray-50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
+                  <tr key={a.id} className="border-b border-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-700">{a.name}</td>
                     <td className="px-5 py-3 text-xs text-gray-500 font-mono">{getLabel(a.instance_id)}</td>
                     <td className="px-5 py-3 text-gray-600">{METRICS[a.metric]?.label}</td>
