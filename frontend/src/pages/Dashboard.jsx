@@ -105,7 +105,14 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
       )
     ).then(results => {
       const patch = {};
-      results.forEach(r => { patch[r.id] = r.data; });
+      const numFields = ["bandwidth","cpu","ram","costServer","costBandwidth","costOther"];
+      results.forEach(r => {
+        patch[r.id] = r.data.map(row => {
+          const clean = { ...row };
+          numFields.forEach(f => { clean[f] = row[f] != null ? Number(row[f]) : null; });
+          return clean;
+        });
+      });
       setCache(prev => ({ ...prev, ...patch }));
     }).finally(() => setLoadingData(false));
   }, [selected, range.start, range.end]);
@@ -155,9 +162,9 @@ export default function Dashboard({ tags, comments, onAddComment, onDeleteCommen
   const totals = selected.reduce((acc, inst) => {
     const data = cache[inst.id] || [];
     const last = data[data.length - 1] || {};
-    acc.costServer    = (acc.costServer    || 0) + (last.costServer    || 0);
-    acc.costBandwidth = (acc.costBandwidth || 0) + (last.costBandwidth || 0);
-    acc.cpu           = (acc.cpu           || 0) + (last.cpu           || 0);
+    acc.costServer    = (acc.costServer    || 0) + (Number(last.costServer)    || 0);
+    acc.costBandwidth = (acc.costBandwidth || 0) + (Number(last.costBandwidth) || 0);
+    acc.cpu           = (acc.cpu           || 0) + (Number(last.cpu)           || 0);
     return acc;
   }, {});
   const n = selected.length || 1;
