@@ -42,9 +42,10 @@ body {
 }
 
 /* ── Scrollbars ──────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--bg-base); }
-::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(0,220,255,0.25); border-radius: 4px; border: 2px solid var(--bg-surface); }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,220,255,0.45); }
 
 /* ══════════════════════════════════════════════════════════════
    LAYOUT BACKGROUND — scan-line texture + radial glow
@@ -77,13 +78,13 @@ body {
 }
 
 .noc-logo-icon {
-  font-size: 1.1rem;
+  font-size: 1.155rem;
   filter: drop-shadow(0 0 6px var(--cyan));
 }
 
 .noc-title {
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -93,7 +94,7 @@ body {
 
 .noc-subtitle {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.63rem;
   color: var(--cyan-dim);
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -108,7 +109,7 @@ body {
   padding: 6px 12px;
   border-radius: 4px;
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: 0.756rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -186,7 +187,7 @@ body {
 }
 .metric-label {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.63rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -194,7 +195,7 @@ body {
 }
 .metric-value {
   font-family: var(--font-display);
-  font-size: 1.8rem;
+  font-size: 1.89rem;
   font-weight: 700;
   color: var(--cyan);
   line-height: 1;
@@ -206,7 +207,7 @@ body {
    ══════════════════════════════════════════════════════════════ */
 .noc-section-title {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.63rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -264,7 +265,7 @@ body {
 }
 .inst-name {
   font-family: var(--font-display);
-  font-size: 0.78rem;
+  font-size: 0.819rem;
   font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -275,7 +276,7 @@ body {
 .inst-item.selected .inst-name { color: var(--cyan); }
 .inst-meta {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.63rem;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -289,7 +290,7 @@ body {
   padding: 1px 6px;
   border-radius: 2px;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.609rem;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -312,7 +313,7 @@ body {
   border-radius: 4px;
   padding: 7px 10px;
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.819rem;
   color: var(--text-primary);
   outline: none;
   transition: var(--transition);
@@ -328,7 +329,7 @@ body {
 .noc-label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.609rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -345,7 +346,7 @@ body {
   padding: 7px 16px;
   border-radius: 4px;
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: 0.7875rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -423,7 +424,7 @@ body {
 }
 .noc-modal-title {
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: 0.9975rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -434,13 +435,13 @@ body {
 /* ══════════════════════════════════════════════════════════════
    TABLES
    ══════════════════════════════════════════════════════════════ */
-.noc-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.noc-table { width: 100%; border-collapse: collapse; font-size: 0.819rem; }
 .noc-table thead tr { border-bottom: 1px solid var(--border-bright); }
 .noc-table th {
   text-align: left;
   padding: 10px 14px;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.609rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -452,8 +453,10 @@ body {
   color: var(--text-secondary);
   border-bottom: 1px solid rgba(0,220,255,0.05);
 }
-.noc-table tr:hover td { background: rgba(0,220,255,0.03); }
-.noc-table .mono { font-family: var(--font-mono); font-size: 0.68rem; color: var(--cyan-dim); }
+.noc-table tr:hover td { background: rgba(0,220,255,0.04); }
+.noc-table tbody tr { background: transparent !important; }
+.noc-table tbody tr:nth-child(even) { background: rgba(0,220,255,0.015) !important; }
+.noc-table .mono { font-family: var(--font-mono); font-size: 0.714rem; color: var(--cyan-dim); }
 
 /* ══════════════════════════════════════════════════════════════
    CHART CONTAINER
@@ -468,7 +471,7 @@ body {
 }
 .chart-title {
   font-family: var(--font-display);
-  font-size: 0.78rem;
+  font-size: 0.819rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -476,7 +479,7 @@ body {
 }
 .chart-unit {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.63rem;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -491,7 +494,7 @@ body {
   padding: 10px 16px;
   border-radius: 4px;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.756rem;
   letter-spacing: 0.05em;
   z-index: 50;
   display: flex;
@@ -556,7 +559,7 @@ body {
   background: linear-gradient(90deg, transparent, var(--cyan), transparent);
 }
 .login-logo {
-  font-size: 2.5rem;
+  font-size: 2.625rem;
   display: block;
   text-align: center;
   margin-bottom: 0.75rem;
@@ -564,7 +567,7 @@ body {
 }
 .login-title {
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.26rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -574,7 +577,7 @@ body {
 }
 .login-sub {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.63rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--cyan-dim);
@@ -588,7 +591,7 @@ body {
    ══════════════════════════════════════════════════════════════ */
 .sync-badge {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.63rem;
   letter-spacing: 0.08em;
   color: var(--text-muted);
   display: flex;
@@ -597,24 +600,24 @@ body {
 }
 .sync-badge.error { color: rgba(255,68,102,0.7); }
 .sync-btn {
-  color: var(--text-muted);
-  background: none;
-  border: none;
+  color: var(--text-secondary);
+  background: rgba(0,220,255,0.06);
+  border: 1px solid var(--border);
   cursor: pointer;
-  padding: 3px;
-  border-radius: 3px;
+  padding: 6px 8px;
+  border-radius: 4px;
   transition: var(--transition);
   display: flex;
   align-items: center;
 }
-.sync-btn:hover { color: var(--cyan); background: rgba(0,220,255,0.08); }
+.sync-btn:hover { color: var(--cyan); background: rgba(0,220,255,0.14); border-color: var(--border-bright); box-shadow: var(--glow-cyan); }
 
 /* ══════════════════════════════════════════════════════════════
    PAGE HEADING
    ══════════════════════════════════════════════════════════════ */
 .page-heading {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.155rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -627,7 +630,7 @@ body {
    ══════════════════════════════════════════════════════════════ */
 .noc-footer {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.609rem;
   letter-spacing: 0.1em;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -647,8 +650,8 @@ body {
 .display      { font-family: var(--font-display); }
 
 /* Tailwind bg-gray-50 override — avoid any white backgrounds leaking through */
-.bg-gray-50   { background: var(--bg-surface) !important; }
-.bg-white     { background: var(--bg-surface) !important; }
+.bg-gray-50   { background: transparent !important; }
+.bg-white     { background: transparent !important; }
 .border-gray-100, .border-gray-200 { border-color: var(--border) !important; }
 .text-gray-800, .text-gray-700 { color: var(--text-primary) !important; }
 .text-gray-600, .text-gray-500 { color: var(--text-secondary) !important; }
