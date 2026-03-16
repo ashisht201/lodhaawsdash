@@ -38,6 +38,7 @@ async function initSchema() {
       owner       TEXT,
       websites    TEXT,
       purpose     TEXT,
+      ip_address  TEXT,
       updated_at  TIMESTAMPTZ DEFAULT NOW(),
       UNIQUE(instance_id)
     );
@@ -47,6 +48,7 @@ async function initSchema() {
     ALTER TABLE tags ADD COLUMN IF NOT EXISTS owner       TEXT;
     ALTER TABLE tags ADD COLUMN IF NOT EXISTS websites    TEXT;
     ALTER TABLE tags ADD COLUMN IF NOT EXISTS purpose     TEXT;
+    ALTER TABLE tags ADD COLUMN IF NOT EXISTS ip_address  TEXT;
 
     CREATE TABLE IF NOT EXISTS comments (
       id          SERIAL PRIMARY KEY,

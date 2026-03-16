@@ -417,7 +417,11 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
                 ? <Spinner text="Loading…"/>
                 : !visibleInstances.length
                   ? <p className="text-xs text-gray-400 text-center py-4">No instances match filters</p>
-                  : visibleInstances.map((inst, idx) => {
+                  : [...visibleInstances].sort((a, b) => {
+                        const asel = !!selected.find(i => i.id === a.id) ? 1 : 0;
+                        const bsel = !!selected.find(i => i.id === b.id) ? 1 : 0;
+                        return bsel - asel; // selected first, then original order
+                      }).map((inst, idx) => {
                       const sel = !!selected.find(i => i.id === inst.id);
                       const globalIdx = allInstances.findIndex(i => i.id === inst.id);
                       return (
@@ -428,7 +432,9 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
                           <div className="min-w-0">
                             <p className={`font-medium truncate ${sel ? "text-blue-700" : "text-gray-700"}`}>
                               {tags[inst.id]?.label
-                                ? tags[inst.id].label
+                                ? tags[inst.id].environment
+                                  ? `${tags[inst.id].label} — ${tags[inst.id].environment.toUpperCase()}`
+                                  : tags[inst.id].label
                                 : <span className="font-mono text-gray-500 text-[10px]">{inst.id.slice(0,19)}…</span>
                               }
                             </p>

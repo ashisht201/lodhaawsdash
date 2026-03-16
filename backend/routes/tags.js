@@ -9,7 +9,7 @@ router.use(requireAuth);
 router.get("/", async (req, res) => {
   try {
     const { rows } = await pool.query(
-      "SELECT instance_id, label, environment, owner, websites, purpose FROM tags"
+      "SELECT instance_id, label, environment, owner, websites, purpose, ip_address FROM tags"
     );
     const map = {};
     rows.forEach(r => {
@@ -34,14 +34,15 @@ router.put("/", requireAdmin, async (req, res) => {
     const map = req.body || {};
     for (const [instanceId, data] of Object.entries(map)) {
       await pool.query(`
-        INSERT INTO tags (instance_id, label, environment, owner, websites, purpose, updated_at)
-        VALUES ($1,$2,$3,$4,$5,$6,NOW())
+        INSERT INTO tags (instance_id, label, environment, owner, websites, purpose, ip_address, updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
         ON CONFLICT (instance_id) DO UPDATE SET
           label       = EXCLUDED.label,
           environment = EXCLUDED.environment,
           owner       = EXCLUDED.owner,
           websites    = EXCLUDED.websites,
           purpose     = EXCLUDED.purpose,
+          ip_address  = EXCLUDED.ip_address,
           updated_at  = NOW()
       `, [
         instanceId,

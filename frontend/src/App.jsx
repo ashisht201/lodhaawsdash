@@ -89,7 +89,7 @@ export default function App() {
   const isAdmin = user.role === "admin";
 
   const NAV = [
-    { id: "dashboard",   label: "Dashboard",   icon: "📊" },
+    { id: "dashboard",   label: "Lodha AWS Dashboard",   icon: "📊" },
     { id: "tags",        label: "Tags",         icon: "🏷️" },
     { id: "alerts",      label: "Alerts",       icon: "🔔" },
     ...(isAdmin ? [
@@ -101,12 +101,12 @@ export default function App() {
   const sharedProps = { tags, getLabel, isAdmin, showToast };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen font-sans" style={{background: "radial-gradient(ellipse at 20% 20%, #e8ecf0 0%, #f1f4f7 40%, #eef1f5 100%)", backgroundImage: "radial-gradient(ellipse at 20% 20%, #e8ecf0 0%, #f1f4f7 40%, #eef1f5 100%), url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8d0da' fill-opacity='0.18'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")"}}>
       <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-3">
           <span className="text-xl">☁️</span>
           <div>
-            <h1 className="text-sm font-bold text-gray-800 tracking-tight">AWS Dashboard</h1>
+            <h1 className="text-sm font-bold text-gray-800 tracking-tight">Lodha AWS Dashboard</h1>
             <p className="text-xs text-gray-400">Cost & Usage Monitor</p>
           </div>
         </div>
@@ -148,6 +148,9 @@ export default function App() {
       </main>
 
       <Toast toast={toast}/>
+      <footer className="max-w-7xl mx-auto px-4 pb-4 mt-2 flex justify-end">
+        <p className="text-[10px] text-gray-400">Dashboard by Ashish Tewari, Lodha IT</p>
+      </footer>
     </div>
   );
 }

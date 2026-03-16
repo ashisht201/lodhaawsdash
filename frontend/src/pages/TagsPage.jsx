@@ -17,7 +17,7 @@ export default function TagsPage({ tags, onSaveTags, isAdmin }) {
     Object.entries(tags).forEach(([id, val]) => {
       copy[id] = typeof val === "object"
         ? { ...val }
-        : { label: val, environment: "", owner: "", websites: "", purpose: "" };
+        : { label: val, environment: "", owner: "", websites: "", purpose: "", ipAddress: "" };
     });
     setLocalTags(copy);
   }, [tags]);
@@ -53,7 +53,7 @@ export default function TagsPage({ tags, onSaveTags, isAdmin }) {
 
   const HEADERS = [
     "Instance ID", "Service", "Type", "State", "Region",
-    "Friendly Name", "Environment", "Owner", "Websites", "Purpose",
+    "Friendly Name", "Environment", "Owner", "IP Address", "Websites", "Purpose",
   ];
 
   return (
@@ -78,11 +78,11 @@ export default function TagsPage({ tags, onSaveTags, isAdmin }) {
                   {/* Region — auto-populated from AWS, read-only */}
                   <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{inst.region || "—"}</td>
                   {/* Editable fields */}
-                  {["label","environment","owner","websites","purpose"].map(field => (
+                  {["label","environment","owner","ipAddress","websites","purpose"].map(field => (
                     <td key={field} className="px-3 py-2">
                       {isAdmin ? (
                         <input type="text"
-                          placeholder={field === "label" ? "e.g. api-server" : field === "websites" ? "e.g. app.example.com" : ""}
+                          placeholder={field === "label" ? "e.g. api-server" : field === "websites" ? "e.g. app.example.com" : field === "ipAddress" ? "e.g. 10.0.1.42" : ""}
                           value={getField(inst.id, field)}
                           onChange={e => setField(inst.id, field, e.target.value)}
                           className={FIELD_INPUT}/>
