@@ -1,4 +1,4 @@
-// frontend/src/App.jsx
+// frontend/src/App.jsx — NOC Dark Theme
 import { useState, useEffect } from "react";
 import { api, saveToken, clearToken } from "./api.js";
 import { Toast } from "./components/ui.jsx";
@@ -42,9 +42,7 @@ export default function App() {
       api.getComments("").catch(() => []),
       api.listAccounts().catch(() => []),
     ]);
-    setTags(t);
-    setComments(c);
-    setAccounts(a);
+    setTags(t); setComments(c); setAccounts(a);
   }
 
   async function handleLogin(username, password) {
@@ -60,27 +58,15 @@ export default function App() {
     setPage("dashboard");
   }
 
-  async function handleSaveTags(map) {
-    await api.saveTags(map);
-    setTags(map);
-    showToast("Tags saved.");
-  }
-
-  async function handleAddComment(body) {
-    const c = await api.addComment(body);
-    setComments(prev => [...prev, c]);
-    showToast("Comment saved.");
-  }
-
-  async function handleDeleteComment(id) {
-    await api.deleteComment(id);
-    setComments(prev => prev.filter(c => c.id !== id));
-    showToast("Comment deleted.");
-  }
+  async function handleSaveTags(map) { await api.saveTags(map); setTags(map); showToast("Tags saved."); }
+  async function handleAddComment(body) { const c = await api.addComment(body); setComments(prev => [...prev, c]); showToast("Comment saved."); }
+  async function handleDeleteComment(id) { await api.deleteComment(id); setComments(prev => prev.filter(c => c.id !== id)); showToast("Comment deleted."); }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-gray-400 text-sm">Loading…</div>
+    <div className="login-bg">
+      <div style={{ fontFamily:"var(--font-mono)", fontSize:"0.7rem", letterSpacing:"0.15em", color:"var(--cyan-dim)", textTransform:"uppercase" }}>
+        Initialising…
+      </div>
     </div>
   );
 
@@ -89,56 +75,61 @@ export default function App() {
   const isAdmin = user.role === "admin";
 
   const NAV = [
-    { id: "dashboard",   label: "Lodha AWS Dashboard",   icon: "📊" },
-    { id: "tags",        label: "Tags",         icon: "🏷️" },
-    { id: "alerts",      label: "Alerts",       icon: "🔔" },
+    { id: "dashboard",   label: "Dashboard",   icon: "◈" },
+    { id: "tags",        label: "Tags",         icon: "◎" },
+    { id: "alerts",      label: "Alerts",       icon: "◉" },
     ...(isAdmin ? [
-      { id: "credentials", label: "Credentials", icon: "🔑" },
-      { id: "users",       label: "Users",        icon: "👥" },
+      { id: "credentials", label: "Credentials", icon: "◆" },
+      { id: "users",       label: "Users",        icon: "◇" },
     ] : []),
   ];
 
   const sharedProps = { tags, getLabel, isAdmin, showToast };
 
   return (
-    <div className="min-h-screen font-sans lodha-bg">
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between sticky top-0 z-40 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="text-xl">☁️</span>
+    <div className="lodha-bg" style={{ minHeight:"100vh" }}>
+      {/* Header */}
+      <header className="noc-header">
+        <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+          <span className="noc-logo-icon">☁️</span>
           <div>
-            <h1 className="text-sm font-bold text-gray-800 tracking-tight">Lodha AWS Dashboard</h1>
-            <p className="text-xs text-gray-400">Cost & Usage Monitor</p>
+            <div className="noc-title">Lodha AWS Dashboard</div>
+            <div className="noc-subtitle">Infrastructure Monitor // Real-time</div>
           </div>
         </div>
-        <nav className="flex items-center gap-1">
+
+        <nav style={{ display:"flex", alignItems:"center", gap:"4px" }}>
           {NAV.map(n => (
             <button key={n.id} onClick={() => setPage(n.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                page === n.id ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-100"
-              }`}>
-              <span>{n.icon}</span>{n.label}
+              className={`nav-btn ${page === n.id ? "active" : ""}`}>
+              <span style={{ fontSize:"0.65rem" }}>{n.icon}</span>
+              {n.label}
             </button>
           ))}
         </nav>
-        <div className="flex items-center gap-4">
+
+        <div style={{ display:"flex", alignItems:"center", gap:"16px" }}>
           <SyncBadge isAdmin={isAdmin}/>
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden md:block">
-              <p className="text-xs font-medium text-gray-700">{user.username}</p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wider">{user.role}</p>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontFamily:"var(--font-display)", fontSize:"0.72rem", fontWeight:600, color:"var(--text-secondary)", letterSpacing:"0.04em" }}>
+              {user.username}
             </div>
-            <button onClick={handleLogout}
-              className="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-red-50">
-              Sign out
-            </button>
+            <div style={{ fontFamily:"var(--font-mono)", fontSize:"0.55rem", color:"var(--text-muted)", letterSpacing:"0.1em", textTransform:"uppercase" }}>
+              {user.role}
+            </div>
           </div>
+          <button onClick={handleLogout} className="noc-btn noc-btn-ghost" style={{ padding:"5px 10px", fontSize:"0.65rem" }}>
+            Exit
+          </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-800">{NAV.find(n => n.id === page)?.label}</h2>
+      {/* Main */}
+      <main style={{ maxWidth:"1280px", margin:"0 auto", padding:"1.5rem 1rem" }}>
+        <div className="page-heading">
+          {page === "dashboard" ? "Lodha AWS Dashboard" : NAV.find(n => n.id === page)?.label}
         </div>
+
         {page === "dashboard"   && <Dashboard {...sharedProps} accounts={accounts} comments={comments}
                                     onAddComment={handleAddComment} onDeleteComment={handleDeleteComment}/>}
         {page === "tags"        && <TagsPage  {...sharedProps} onSaveTags={handleSaveTags}/>}
@@ -147,10 +138,12 @@ export default function App() {
         {page === "users"       && isAdmin && <UsersPage currentUser={user.username} showToast={showToast}/>}
       </main>
 
-      <Toast toast={toast}/>
-      <footer className="max-w-7xl mx-auto px-4 pb-4 mt-2 flex justify-end">
-        <p className="text-[10px] text-gray-400">Dashboard by Ashish Tewari, Lodha IT</p>
+      {/* Footer */}
+      <footer style={{ maxWidth:"1280px", margin:"0 auto", padding:"0.5rem 1rem 1.5rem", display:"flex", justifyContent:"flex-end" }}>
+        <span className="noc-footer">Dashboard by Ashish Tewari // Lodha IT</span>
       </footer>
+
+      <Toast toast={toast}/>
     </div>
   );
 }

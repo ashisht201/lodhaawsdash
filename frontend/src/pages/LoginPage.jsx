@@ -1,6 +1,5 @@
-// frontend/src/pages/LoginPage.jsx
+// frontend/src/pages/LoginPage.jsx — NOC Dark Theme
 import { useState } from "react";
-import { Input, Btn } from "../components/ui.jsx";
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -17,27 +16,36 @@ export default function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">☁️</div>
-          <h1 className="text-2xl font-bold text-gray-800">AWS Dashboard</h1>
-          <p className="text-sm text-gray-400 mt-1">Cost & Usage Monitor</p>
-        </div>
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-8">
-          <form onSubmit={submit} className="space-y-4">
-            <Input label="Username" type="text" value={username}
-              onChange={e => setUsername(e.target.value)} autoComplete="username" required />
-            <Input label="Password" type="password" value={password}
-              onChange={e => setPassword(e.target.value)} autoComplete="current-password" required />
-            {error && (
-              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
-            )}
-            <Btn type="submit" disabled={loading} className="w-full justify-center">
-              {loading ? "Signing in…" : "Sign in"}
-            </Btn>
-          </form>
-        </div>
+    <div className="login-bg">
+      <div className="login-card">
+        <span className="login-logo">☁️</span>
+        <h1 className="login-title">Lodha AWS</h1>
+        <p className="login-sub">Infrastructure Dashboard // Secure Access</p>
+
+        <form onSubmit={submit} style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+          <div>
+            <label className="noc-label">Username</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)}
+              autoComplete="username" required className="noc-input"
+              placeholder="enter username"/>
+          </div>
+          <div>
+            <label className="noc-label">Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password" required className="noc-input"
+              placeholder="••••••••••"/>
+          </div>
+          {error && (
+            <div style={{
+              padding:"8px 12px", borderRadius:"4px",
+              background:"rgba(255,68,102,0.08)", border:"1px solid rgba(255,68,102,0.3)",
+              color:"var(--red)", fontFamily:"var(--font-mono)", fontSize:"0.68rem"
+            }}>{error}</div>
+          )}
+          <button type="submit" disabled={loading} className="noc-btn noc-btn-primary" style={{ marginTop:"0.5rem", width:"100%" }}>
+            {loading ? "Authenticating…" : "Access Dashboard →"}
+          </button>
+        </form>
       </div>
     </div>
   );
