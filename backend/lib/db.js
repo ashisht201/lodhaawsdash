@@ -92,18 +92,27 @@ async function initSchema() {
       id             SERIAL PRIMARY KEY,
       instance_id    TEXT NOT NULL,
       account_id     INTEGER,
-      month          TEXT NOT NULL,
+      date           TEXT NOT NULL,        -- YYYY-MM-DD (daily) or YYYY-MM (monthly legacy)
       bandwidth      NUMERIC,
-      cpu            NUMERIC,
-      ram            NUMERIC,
+      bandwidth_max  NUMERIC,              -- daily peak bandwidth GB
+      cpu            NUMERIC,              -- daily average CPU %
+      cpu_max        NUMERIC,              -- daily peak CPU %
+      ram            NUMERIC,              -- daily average RAM %
+      ram_max        NUMERIC,              -- daily peak RAM %
       cost_server    NUMERIC,
       cost_bandwidth NUMERIC,
       cost_other     NUMERIC,
       synced_at      TIMESTAMPTZ DEFAULT NOW(),
-      UNIQUE(instance_id, month)
+      UNIQUE(instance_id, date)
     );
 
-    ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS account_id INTEGER;
+    ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS account_id    INTEGER;
+    ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS date          TEXT;
+    ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS bandwidth_max NUMERIC;
+    ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS cpu_max       NUMERIC;
+    ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS ram_max       NUMERIC;
+    -- Migrate existing month column to date if needed
+    UPDATE metrics_cache SET date = month WHERE date IS NULL AND month IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS sync_log (
       id               SERIAL PRIMARY KEY,

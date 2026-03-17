@@ -1,6 +1,6 @@
 // backend/lib/syncEngine.js
 const { pool }   = require("./db");
-const { listInstancesForAccount, buildMonthlyDataset } = require("./awsFetcher");
+const { listInstancesForAccount, buildDailyDataset } = require("./awsFetcher");
 
 const MONTHS_BACK = 24;
 
@@ -22,23 +22,33 @@ async function cacheInstance(inst) {
   `, [inst.id, inst.accountId, inst.awsName, inst.type, inst.service, inst.state, inst.az, inst.region]);
 }
 
-async function cacheMetrics(instanceId, accountId, monthlyData) {
-  for (const row of monthlyData) {
+async function cacheMetrics(instanceId, accountId, dailyData) {
+  for (const row of dailyData) {
     await pool.query(`
       INSERT INTO metrics_cache
-        (instance_id, account_id, month, bandwidth, cpu, ram, cost_server, cost_bandwidth, cost_other, synced_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
-      ON CONFLICT (instance_id, month) DO UPDATE SET
-        account_id = EXCLUDED.account_id, bandwidth = EXCLUDED.bandwidth,
-        cpu = EXCLUDED.cpu, ram = EXCLUDED.ram,
-        cost_server = EXCLUDED.cost_server, cost_bandwidth = EXCLUDED.cost_bandwidth,
-        cost_other = EXCLUDED.cost_other, synced_at = NOW()
-    `, [instanceId, accountId, row.month, row.bandwidth, row.cpu, row.ram,
+        (instance_id, account_id, date, bandwidth, bandwidth_max, cpu, cpu_max,
+         ram, ram_max, cost_server, cost_bandwidth, cost_other, synced_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+      ON CONFLICT (instance_id, date) DO UPDATE SET
+        account_id     = EXCLUDED.account_id,
+        bandwidth      = EXCLUDED.bandwidth,
+        bandwidth_max  = EXCLUDED.bandwidth_max,
+        cpu            = EXCLUDED.cpu,
+        cpu_max        = EXCLUDED.cpu_max,
+        ram            = EXCLUDED.ram,
+        ram_max        = EXCLUDED.ram_max,
+        cost_server    = EXCLUDED.cost_server,
+        cost_bandwidth = EXCLUDED.cost_bandwidth,
+        cost_other     = EXCLUDED.cost_other,
+        synced_at      = NOW()
+    `, [instanceId, accountId, row.date,
+        row.bandwidth, row.bandwidthMax,
+        row.cpu, row.cpuMax,
+        row.ram, row.ramMax,
         row.costServer, row.costBandwidth, row.costOther]);
   }
 }
 
-// Sync a single account — called per-account
 async function syncAccount(account) {
   const { rows: [log] } = await pool.query(
     "INSERT INTO sync_log (account_id, started_at, status) VALUES ($1,NOW(),'running') RETURNING id",
@@ -51,13 +61,13 @@ async function syncAccount(account) {
     const { start, end } = dateRange();
     const instances = await listInstancesForAccount(account);
     for (const inst of instances) await cacheInstance(inst);
-    console.log(`[sync]   Found ${instances.length} instances. Fetching metrics ${start} → ${end}…`);
+    console.log(`[sync]   Found ${instances.length} instances. Fetching daily metrics ${start} → ${end}…`);
 
     let synced = 0;
     for (const inst of instances) {
       try {
         console.log(`[sync]   ${inst.id} (${inst.service} / ${inst.region})…`);
-        const data = await buildMonthlyDataset(account, inst.id, inst.region, start, end);
+        const data = await buildDailyDataset(account, inst.id, inst.region, start, end);
         await cacheMetrics(inst.id, account.id, data);
         synced++;
       } catch (e) { console.warn(`[sync]   ✗ ${inst.id}: ${e.message}`); }
@@ -79,31 +89,25 @@ async function syncAccount(account) {
   }
 }
 
-// Sync ALL active accounts
 async function runSync(accountId = null) {
-  const query = accountId
+  const query  = accountId
     ? "SELECT * FROM accounts WHERE active = TRUE AND id = $1"
     : "SELECT * FROM accounts WHERE active = TRUE";
   const params = accountId ? [accountId] : [];
   const { rows: accounts } = await pool.query(query, params);
 
-  if (!accounts.length) {
-    console.log("[sync] No active accounts to sync.");
-    return { ok: true, accounts: 0 };
-  }
+  if (!accounts.length) { console.log("[sync] No active accounts."); return { ok: true, accounts: 0 }; }
 
   console.log(`[sync] Syncing ${accounts.length} account(s)…`);
   let totalSynced = 0, totalInstances = 0;
   for (const account of accounts) {
     try {
-      const result = await syncAccount(account);
-      totalSynced    += result.synced;
-      totalInstances += result.total;
-    } catch (e) {
-      console.error(`[sync] Account "${account.display_name}" failed: ${e.message}`);
-    }
+      const r = await syncAccount(account);
+      totalSynced    += r.synced;
+      totalInstances += r.total;
+    } catch (e) { console.error(`[sync] Account "${account.display_name}" failed: ${e.message}`); }
   }
-  console.log(`[sync] All accounts done. ${totalSynced}/${totalInstances} total instances synced.`);
+  console.log(`[sync] All done. ${totalSynced}/${totalInstances} instances synced.`);
   return { ok: true, synced: totalSynced, total: totalInstances };
 }
 

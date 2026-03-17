@@ -11,12 +11,13 @@ import { Badge, Card, SectionTitle, Btn, Modal, Spinner, EmptyState } from "../c
 const PALETTE = ["#00dcff","#00ff9d","#ffb800","#ff4466","#bf7fff","#00e5ff","#ff6b35","#a8ff3e"];
 
 const METRICS = {
-  bandwidth:     { label: "Bandwidth",        unit: "GB",  color: "#00dcff" },
-  cpu:           { label: "CPU Utilisation",  unit: "%",   color: "#00ff9d" },
-  ram:           { label: "RAM Utilisation",  unit: "%",   color: "#bf7fff" },
-  costServer:    { label: "Server Cost",      unit: "$",   color: "#ff4466" },
-  costBandwidth: { label: "Bandwidth Cost",   unit: "$",   color: "#ffb800" },
-  costOther:     { label: "Other Cost",       unit: "$",   color: "#00e5ff" },
+  bandwidth:     { label: "Bandwidth",        unit: "GB",  color: "#00dcff", maxKey: "bandwidthMax" },
+  cpu:           { label: "CPU Utilisation",  unit: "%",   color: "#00ff9d", maxKey: "cpuMax"       },
+  ram:           { label: "RAM Utilisation",  unit: "%",   color: "#bf7fff", maxKey: "ramMax"       },
+  disk:          { label: "Disk Utilisation", unit: "%",   color: "#ff9d00", maxKey: null           },
+  costServer:    { label: "Server Cost",      unit: "$",   color: "#ff4466", maxKey: null           },
+  costBandwidth: { label: "Bandwidth Cost",   unit: "$",   color: "#ffb800", maxKey: null           },
+  costOther:     { label: "Other Cost",       unit: "$",   color: "#00e5ff", maxKey: null           },
 };
 
 const DATE_PRESETS = [
@@ -98,6 +99,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
   const [filterType,    setFilterType]    = useState("");
   const [filterWebsite, setFilterWebsite] = useState("");
   const [filterAccount, setFilterAccount] = useState("");
+  const [showPeak,      setShowPeak]      = useState(false);  // toggle Average vs Peak
 
   const range = datePreset === "custom"
     ? { start: customStart, end: customEnd }
@@ -150,7 +152,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
     setLoadingData(true);
     Promise.all(missing.map(inst => api.monthly(inst.id, range.start, range.end).then(data => ({ id: inst.id, data })).catch(() => ({ id: inst.id, data: [] }))))
       .then(results => {
-        const numFields = ["bandwidth","cpu","ram","costServer","costBandwidth","costOther"];
+        const numFields = ["bandwidth","bandwidthMax","cpu","cpuMax","ram","ramMax","disk","diskMax","costServer","costBandwidth","costOther"];
         const patch = {};
         results.forEach(r => { patch[r.id] = r.data.map(row => { const c={...row}; numFields.forEach(f => { c[f]=row[f]!=null?Number(row[f]):null; }); return c; }); });
         setCache(prev => ({ ...prev, ...patch }));
@@ -164,16 +166,20 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
   }
 
   function buildChartData(metric) {
-    const monthSet = new Set();
-    selected.forEach(inst => (cache[inst.id]||[]).forEach(d => monthSet.add(d.month)));
-    return Array.from(monthSet).sort().map(month => {
-      const row = { month };
-      selected.forEach(inst => { const d=(cache[inst.id]||[]).find(x=>x.month===month); row[inst.id]=d?d[metric]:null; });
+    const dateSet = new Set();
+    selected.forEach(inst => (cache[inst.id]||[]).forEach(d => dateSet.add(d.date)));
+    const metaKey = showPeak && METRICS[metric]?.maxKey ? METRICS[metric].maxKey : metric;
+    return Array.from(dateSet).sort().map(date => {
+      const row = { date };
+      selected.forEach(inst => {
+        const d = (cache[inst.id]||[]).find(x => x.date === date);
+        row[inst.id] = d ? (Number(d[metaKey]) ?? null) : null;
+      });
       return row;
     });
   }
 
-  const availableMonths = [...new Set(selected.flatMap(inst => (cache[inst.id]||[]).map(d=>d.month)))].sort();
+  const availableDates  = [...new Set(selected.flatMap(inst => (cache[inst.id]||[]).map(d=>d.date)))].sort();
 
   async function submitComment() {
     if (!newComment.month || !newComment.body) return;
@@ -207,7 +213,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem" }}>
           <div>
             <div className="chart-title" style={{ color: meta.color }}>{meta.label}</div>
-            <div className="chart-unit">{meta.unit === "$" ? "USD · Monthly" : `${meta.unit} · Monthly`}</div>
+            <div className="chart-unit">{meta.unit === "$" ? "USD · Monthly (spread daily)" : `${meta.unit} · Daily · ${showPeak && meta.maxKey ? "Peak" : "Average"}`}</div>
           </div>
           {isAdmin && (
             <button onClick={() => { setCommentModal({ metric }); setNewComment(c => ({ ...c, metric })); }}
@@ -229,7 +235,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
               ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,220,255,0.06)"/>
-            <XAxis dataKey="month" tick={{ fontFamily:"var(--font-mono)", fontSize:10, fill:"#4d7a96" }} axisLine={false} tickLine={false}/>
+            <XAxis dataKey="date" tick={{ fontFamily:"var(--font-mono)", fontSize:10, fill:"#4d7a96" }} axisLine={false} tickLine={false}/>
             <YAxis tick={{ fontFamily:"var(--font-mono)", fontSize:10, fill:"#4d7a96" }} axisLine={false} tickLine={false} width={44}
               tickFormatter={v => meta.unit === "$" ? `$${v}` : `${v}`}/>
             <Tooltip content={<CustomTooltip comments={instComments} getLabel={getLabel}/>}/>
@@ -307,6 +313,14 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
             </div>
           )}
           {loadingData && <span style={{ alignSelf:"center", fontFamily:"var(--font-mono)", fontSize:"0.6rem", color:"var(--cyan-dim)", letterSpacing:"0.1em" }}>Fetching…</span>}
+          <div style={{ alignSelf:"flex-end" }}>
+            <label className="noc-label">View Mode</label>
+            <button onClick={() => setShowPeak(p => !p)}
+              className={`noc-btn ${showPeak ? "noc-btn-primary" : "noc-btn-ghost"}`}
+              style={{ padding:"7px 14px", fontSize:"0.68rem" }}>
+              {showPeak ? "⬆ Peak" : "∿ Average"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -414,7 +428,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
               <label className="noc-label">Month</label>
               <select value={newComment.month} onChange={e => setNewComment(c=>({...c,month:e.target.value}))} className="noc-input">
                 <option value="">— Select —</option>
-                {availableMonths.map(m => <option key={m}>{m}</option>)}
+                {availableDates.map(m => <option key={m}>{m}</option>)}
               </select>
             </div>
             <div>

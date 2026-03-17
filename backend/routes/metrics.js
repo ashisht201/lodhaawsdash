@@ -1,5 +1,5 @@
 // backend/routes/metrics.js
-// All data served from cache. No live AWS calls during browsing.
+// Serves data from daily cache. No live AWS calls during browsing.
 const router = require("express").Router();
 const { requireAuth } = require("../middleware/auth");
 const { pool }        = require("../lib/db");
@@ -10,49 +10,57 @@ router.use(requireAuth);
 router.get("/instances", async (req, res) => {
   try {
     const { accountId } = req.query;
-    const query = accountId
-      ? `SELECT i.id, i.account_id AS "accountId", i.aws_name AS "awsName",
-                i.type, i.service, i.state, i.az, i.region, i.synced_at AS "syncedAt",
-                t.label, a.display_name AS "accountName"
-         FROM instances_cache i
-         LEFT JOIN tags t ON t.instance_id = i.id
-         LEFT JOIN accounts a ON a.id = i.account_id
-         WHERE i.account_id = $1
-         ORDER BY i.type DESC, i.id`
-      : `SELECT i.id, i.account_id AS "accountId", i.aws_name AS "awsName",
-                i.type, i.service, i.state, i.az, i.region, i.synced_at AS "syncedAt",
-                t.label, a.display_name AS "accountName"
-         FROM instances_cache i
-         LEFT JOIN tags t ON t.instance_id = i.id
-         LEFT JOIN accounts a ON a.id = i.account_id
-         ORDER BY i.type DESC, i.id`;
+    const where  = accountId ? "WHERE i.account_id = $1" : "";
     const params = accountId ? [accountId] : [];
-    const { rows } = await pool.query(query, params);
+    const { rows } = await pool.query(`
+      SELECT i.id, i.account_id AS "accountId", i.aws_name AS "awsName",
+             i.type, i.service, i.state, i.az, i.region,
+             i.synced_at AS "syncedAt", t.label, a.display_name AS "accountName"
+      FROM instances_cache i
+      LEFT JOIN tags t ON t.instance_id = i.id
+      LEFT JOIN accounts a ON a.id = i.account_id
+      ${where}
+      ORDER BY i.type DESC, i.id
+    `, params);
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: "Failed to load instances" }); }
 });
 
-// GET /api/metrics/monthly?instanceId=…&start=YYYY-MM&end=YYYY-MM
-router.get("/monthly", async (req, res) => {
+// GET /api/metrics/daily?instanceId=…&start=YYYY-MM-DD&end=YYYY-MM-DD
+router.get("/daily", async (req, res) => {
   const { instanceId, start, end } = req.query;
   if (!instanceId) return res.status(400).json({ error: "instanceId required" });
   try {
-    const startMonth = (start || "").slice(0, 7);
-    const endMonth   = (end   || "").slice(0, 7);
-    const query = startMonth && endMonth
-      ? `SELECT month, bandwidth, cpu, ram,
-                cost_server AS "costServer", cost_bandwidth AS "costBandwidth", cost_other AS "costOther"
-         FROM metrics_cache WHERE instance_id=$1 AND month>=$2 AND month<=$3 ORDER BY month`
-      : `SELECT month, bandwidth, cpu, ram,
-                cost_server AS "costServer", cost_bandwidth AS "costBandwidth", cost_other AS "costOther"
-         FROM metrics_cache WHERE instance_id=$1 ORDER BY month`;
-    const params = startMonth && endMonth ? [instanceId, startMonth, endMonth] : [instanceId];
+    const startDate = (start || "").slice(0, 10);
+    const endDate   = (end   || "").slice(0, 10);
+    const query = startDate && endDate
+      ? `SELECT date, bandwidth, bandwidth_max AS "bandwidthMax",
+                cpu, cpu_max AS "cpuMax", ram, ram_max AS "ramMax",
+                cost_server AS "costServer", cost_bandwidth AS "costBandwidth",
+                cost_other AS "costOther"
+         FROM metrics_cache
+         WHERE instance_id = $1 AND date >= $2 AND date <= $3
+         ORDER BY date ASC`
+      : `SELECT date, bandwidth, bandwidth_max AS "bandwidthMax",
+                cpu, cpu_max AS "cpuMax", ram, ram_max AS "ramMax",
+                cost_server AS "costServer", cost_bandwidth AS "costBandwidth",
+                cost_other AS "costOther"
+         FROM metrics_cache
+         WHERE instance_id = $1
+         ORDER BY date ASC`;
+    const params = startDate && endDate ? [instanceId, startDate, endDate] : [instanceId];
     const { rows } = await pool.query(query, params);
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: "Failed to load metrics" }); }
 });
 
-// GET /api/metrics/validate — test credentials for a specific account
+// Keep /monthly as alias for backwards compat — redirects to /daily
+router.get("/monthly", async (req, res) => {
+  req.url = "/daily" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+  res.redirect(307, `/api/metrics/daily?${new URLSearchParams(req.query)}`);
+});
+
+// GET /api/metrics/validate
 router.get("/validate", async (req, res) => {
   try {
     const { accountId } = req.query;
