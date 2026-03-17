@@ -198,7 +198,8 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
   function MetricChart({ metric }) {
     const meta = METRICS[metric];
     const data = buildChartData(metric);
-    const instComments  = comments.filter(c => c.metric === metric);
+    const selectedIds   = new Set(selected.map(i => i.id));
+    const instComments  = comments.filter(c => c.metric === metric && selectedIds.has(c.instance_id));
     const commentMonths = [...new Set(instComments.map(c => c.month))];
 
     return (

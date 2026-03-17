@@ -51,6 +51,7 @@ router.put("/", requireAdmin, async (req, res) => {
         data.owner       || "",
         data.websites    || "",
         data.purpose     || "",
+        data.ipAddress   || "",
       ]);
     }
     res.json({ ok: true });
