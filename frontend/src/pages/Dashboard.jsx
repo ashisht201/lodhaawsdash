@@ -21,13 +21,17 @@ const METRICS = {
 };
 
 const DATE_PRESETS = [
-  { value: "week",      label: "This Week" },
-  { value: "lastweek",  label: "Last Week" },
-  { value: "month",     label: "This Month" },
-  { value: "lastmonth", label: "Last Month" },
-  { value: "quarter",   label: "Quarter" },
-  { value: "year",      label: "This Year" },
-  { value: "custom",    label: "Custom…" },
+  { value: "week",       label: "This Week" },
+  { value: "lastweek",   label: "Last Week" },
+  { value: "month",      label: "This Month" },
+  { value: "lastmonth",  label: "Last Month" },
+  { value: "quarter",    label: "This Quarter" },
+  { value: "lastquarter",label: "Last Quarter" },
+  { value: "year",       label: "This Year" },
+  { value: "lastyear",   label: "Last Year" },
+  { value: "2years",     label: "Last 2 Years" },
+  { value: "all",        label: "All Data" },
+  { value: "custom",     label: "Custom…" },
 ];
 
 const SIZE_ORDER = ["nano","micro","small","medium","large","xlarge","2xlarge","4xlarge","8xlarge","12xlarge","16xlarge","24xlarge","32xlarge","48xlarge","metal"];
@@ -41,18 +45,53 @@ function sortInstances(instances) {
 }
 
 function dateRangeFor(preset) {
-  const now = new Date(); const fmt = d => d.toISOString().slice(0,10);
-  const s = new Date(now);
+  const now  = new Date();
+  const fmt  = d => d.toISOString().slice(0, 10);
+  const y    = now.getFullYear();
+  const m    = now.getMonth(); // 0-indexed
+
+  // Current quarter start month (0, 3, 6, or 9)
+  const qStart = Math.floor(m / 3) * 3;
+
   switch (preset) {
-    case "week":      s.setDate(now.getDate()-7);         break;
-    case "lastweek":  s.setDate(now.getDate()-14);        break;
-    case "month":     s.setMonth(now.getMonth()-1);       break;
-    case "lastmonth": s.setMonth(now.getMonth()-2);       break;
-    case "quarter":   s.setMonth(now.getMonth()-3);       break;
-    case "year":      s.setFullYear(now.getFullYear()-1); break;
-    default:          s.setMonth(now.getMonth()-1);
+    case "week":
+      return { start: fmt(new Date(y, m, now.getDate() - 7)),  end: fmt(now) };
+    case "lastweek": {
+      const mon = new Date(now); mon.setDate(now.getDate() - now.getDay() - 6);
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      return { start: fmt(mon), end: fmt(sun) };
+    }
+    case "month":
+      // 1st of current month → today
+      return { start: fmt(new Date(y, m, 1)), end: fmt(now) };
+    case "lastmonth":
+      // 1st → last day of previous calendar month
+      return {
+        start: fmt(new Date(y, m - 1, 1)),
+        end:   fmt(new Date(y, m, 0)),       // day 0 of current month = last day of prev month
+      };
+    case "quarter":
+      // 1st of current quarter → today
+      return { start: fmt(new Date(y, qStart, 1)), end: fmt(now) };
+    case "lastquarter": {
+      const lqs = qStart - 3;
+      return {
+        start: fmt(new Date(y, lqs, 1)),
+        end:   fmt(new Date(y, lqs + 3, 0)),
+      };
+    }
+    case "year":
+      // 1 Jan of current year → today
+      return { start: fmt(new Date(y, 0, 1)), end: fmt(now) };
+    case "lastyear":
+      return { start: fmt(new Date(y - 1, 0, 1)), end: fmt(new Date(y - 1, 11, 31)) };
+    case "2years":
+      return { start: fmt(new Date(y - 2, m, now.getDate())), end: fmt(now) };
+    case "all":
+      return { start: null, end: null };  // no filter — fetch everything
+    default:
+      return { start: fmt(new Date(y, m, 1)), end: fmt(now) };
   }
-  return { start: fmt(s), end: fmt(now) };
 }
 
 // Dark tooltip
@@ -104,6 +143,8 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
   const range = datePreset === "custom"
     ? { start: customStart, end: customEnd }
     : dateRangeFor(datePreset);
+  // "All Data" has null start/end — fetch without date filter
+  const hasRange = range.start && range.end;
 
   useEffect(() => {
     setLoadingInst(true);
@@ -146,11 +187,12 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
   }, [visibleInstances]);
 
   useEffect(() => {
-    if (!selected.length || !range.start || !range.end) return;
+    if (!selected.length) return;
+    if (datePreset === 'custom' && (!range.start || !range.end)) return;
     const missing = selected.filter(i => !cache[i.id]);
     if (!missing.length) return;
     setLoadingData(true);
-    Promise.all(missing.map(inst => api.monthly(inst.id, range.start, range.end).then(data => ({ id: inst.id, data })).catch(() => ({ id: inst.id, data: [] }))))
+    Promise.all(missing.map(inst => api.daily(inst.id, range.start || '', range.end || '').then(data => ({ id: inst.id, data })).catch(() => ({ id: inst.id, data: [] }))))
       .then(results => {
         const numFields = ["bandwidth","bandwidthMax","cpu","cpuMax","ram","ramMax","disk","diskMax","costServer","costBandwidth","costOther"];
         const patch = {};
@@ -159,7 +201,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
       }).finally(() => setLoadingData(false));
   }, [selected, range.start, range.end]);
 
-  useEffect(() => { setCache({}); }, [range.start, range.end]);
+  useEffect(() => { setCache({}); }, [range.start, range.end, datePreset]);
 
   function toggleInst(inst) {
     setSelected(prev => prev.find(i => i.id === inst.id) ? prev.filter(i => i.id !== inst.id) : [...prev, inst]);
