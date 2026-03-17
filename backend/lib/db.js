@@ -113,15 +113,16 @@ async function initSchema() {
     ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS ram_max       NUMERIC;
     -- Migrate existing month column to date if needed
     UPDATE metrics_cache SET date = month WHERE date IS NULL AND month IS NOT NULL;
+    -- Remove NOT NULL from month column (now replaced by date)
+    ALTER TABLE metrics_cache ALTER COLUMN month DROP NOT NULL;
+    -- Drop old month-based unique constraint if it exists
+    ALTER TABLE metrics_cache DROP CONSTRAINT IF EXISTS metrics_cache_instance_id_month_key;
     -- Add unique constraint on (instance_id, date) if it doesn't exist
     DO $$ BEGIN
       IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
         WHERE conname = 'metrics_cache_instance_id_date_key'
       ) THEN
-        -- Drop old month-based unique constraint first if it exists
-        ALTER TABLE metrics_cache DROP CONSTRAINT IF EXISTS metrics_cache_instance_id_month_key;
-        -- Add new date-based unique constraint
         ALTER TABLE metrics_cache ADD CONSTRAINT metrics_cache_instance_id_date_key
           UNIQUE (instance_id, date);
       END IF;
