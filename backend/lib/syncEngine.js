@@ -2,7 +2,7 @@
 const { pool }   = require("./db");
 const { listInstancesForAccount, buildMonthlyDataset } = require("./awsFetcher");
 
-const MONTHS_BACK = 12;
+const MONTHS_BACK = 24;
 
 function dateRange() {
   const end = new Date(); const start = new Date();
