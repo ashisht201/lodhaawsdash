@@ -32,7 +32,8 @@ export const api = {
   deleteAccount:  (id)      => req("DELETE",`/accounts/${id}`),
   // Metrics
   instances:      (accountId) => req("GET", `/metrics/instances${accountId ? `?accountId=${accountId}` : ""}`),
-  monthly:        (instanceId, start, end) => req("GET", `/metrics/monthly?instanceId=${encodeURIComponent(instanceId)}&start=${start}&end=${end}`),
+  monthly:        (instanceId, start, end) => req("GET", `/metrics/daily?instanceId=${encodeURIComponent(instanceId)}&start=${start}&end=${end}`),
+  daily:          (instanceId, start, end) => req("GET", `/metrics/daily?instanceId=${encodeURIComponent(instanceId)}&start=${start}&end=${end}`),
   validateAWS:    (accountId) => req("GET", `/metrics/validate?accountId=${accountId}`),
   // Tags
   getTags:        ()       => req("GET", "/tags"),
