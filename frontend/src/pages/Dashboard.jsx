@@ -186,22 +186,22 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
     setSelected(prev => prev.filter(i => ids.has(i.id)));
   }, [visibleInstances]);
 
+  // Single effect handles both cache invalidation and fetch — avoids race condition
+  // where setCache({}) and the fetch fire in the same render cycle
   useEffect(() => {
     if (!selected.length) return;
     if (datePreset === 'custom' && (!range.start || !range.end)) return;
-    const missing = selected.filter(i => !cache[i.id]);
-    if (!missing.length) return;
+    // Always clear cache and re-fetch all selected instances when range/preset changes
+    setCache({});
     setLoadingData(true);
-    Promise.all(missing.map(inst => api.daily(inst.id, range.start || '', range.end || '').then(data => ({ id: inst.id, data })).catch(() => ({ id: inst.id, data: [] }))))
+    Promise.all(selected.map(inst => api.daily(inst.id, range.start || '', range.end || '').then(data => ({ id: inst.id, data })).catch(() => ({ id: inst.id, data: [] }))))
       .then(results => {
         const numFields = ["bandwidth","bandwidthMax","cpu","cpuMax","ram","ramMax","disk","diskMax","costServer","costBandwidth","costOther"];
         const patch = {};
         results.forEach(r => { patch[r.id] = r.data.map(row => { const c={...row}; numFields.forEach(f => { c[f]=row[f]!=null?Number(row[f]):null; }); return c; }); });
-        setCache(prev => ({ ...prev, ...patch }));
+        setCache(patch);
       }).finally(() => setLoadingData(false));
-  }, [selected, range.start, range.end]);
-
-  useEffect(() => { setCache({}); }, [range.start, range.end, datePreset]);
+  }, [selected, range.start, range.end, datePreset]);
 
   function toggleInst(inst) {
     setSelected(prev => prev.find(i => i.id === inst.id) ? prev.filter(i => i.id !== inst.id) : [...prev, inst]);
