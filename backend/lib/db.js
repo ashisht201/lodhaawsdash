@@ -113,6 +113,9 @@ async function initSchema() {
     ALTER TABLE metrics_cache ADD COLUMN IF NOT EXISTS ram_max       NUMERIC;
     -- Migrate existing month column to date if needed
     UPDATE metrics_cache SET date = month WHERE date IS NULL AND month IS NOT NULL;
+    -- Remove old monthly rows (YYYY-MM format) — replaced by daily rows (YYYY-MM-DD)
+    -- Safe to run repeatedly: only deletes rows where date doesn't match YYYY-MM-DD
+    DELETE FROM metrics_cache WHERE date IS NOT NULL AND date NOT LIKE '____-__-__';
     -- Remove NOT NULL from month column (now replaced by date)
     ALTER TABLE metrics_cache ALTER COLUMN month DROP NOT NULL;
     -- Drop old month-based unique constraint if it exists

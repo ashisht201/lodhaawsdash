@@ -40,6 +40,7 @@ router.get("/daily", async (req, res) => {
                 cost_other AS "costOther"
          FROM metrics_cache
          WHERE instance_id = $1 AND date >= $2 AND date <= $3
+           AND date LIKE '____-__-__'
          ORDER BY date ASC`
       : `SELECT date, bandwidth, bandwidth_max AS "bandwidthMax",
                 cpu, cpu_max AS "cpuMax", ram, ram_max AS "ramMax",
@@ -47,6 +48,7 @@ router.get("/daily", async (req, res) => {
                 cost_other AS "costOther"
          FROM metrics_cache
          WHERE instance_id = $1
+           AND date LIKE '____-__-__'
          ORDER BY date ASC`;
     const params = startDate && endDate ? [instanceId, startDate, endDate] : [instanceId];
     const { rows } = await pool.query(query, params);
