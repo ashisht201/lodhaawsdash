@@ -19,6 +19,7 @@ router.get("/", async (req, res) => {
         owner:       r.owner       || "",
         websites:    r.websites    || "",
         purpose:     r.purpose     || "",
+        ipAddress:   r.ip_address  || "",
       };
     });
     res.json(map);
