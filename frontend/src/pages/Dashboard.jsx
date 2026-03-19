@@ -358,7 +358,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
       <div style={{ background:"var(--bg-surface)", border:"1px solid var(--border)", borderRadius:6, padding:"0.75rem 1rem", marginBottom:"1.25rem" }}>
         <div style={{ display:"flex", flexWrap:"wrap", gap:"0.75rem", alignItems:"flex-end" }}>
           {[
-            { label:"Date Range", value:datePreset, set:setDatePreset, opts:DATE_PRESETS.map(p=>({v:p.value,l:p.label})) },
+            { label:"Date Range", value:datePreset, set:setDatePreset, opts:DATE_PRESETS.map(p=>({v:p.value,l:p.label})), noAll: true },
             ...(filterOptions.envs.length    ? [{ label:"Environment", value:filterEnv,    set:setFilterEnv,    opts:filterOptions.envs.map(v=>({v,l:v})) }] : []),
             ...(filterOptions.owners.length  ? [{ label:"Owner",       value:filterOwner,  set:setFilterOwner,  opts:filterOptions.owners.map(v=>({v,l:v})) }] : []),
             ...(filterOptions.regions.length ? [{ label:"Region",      value:filterRegion, set:setFilterRegion, opts:filterOptions.regions.map(v=>({v,l:v})) }] : []),
@@ -368,7 +368,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
             <div key={f.label} style={{ minWidth:130 }}>
               <label className="noc-label">{f.label}</label>
               <select value={f.value} onChange={e => f.set(e.target.value)} className={selInput}>
-                <option value="">All</option>
+                {!f.noAll && <option value="">All</option>}
                 {f.opts.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
               </select>
             </div>
