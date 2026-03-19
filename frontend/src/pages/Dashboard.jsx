@@ -250,6 +250,18 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
     const instComments  = comments.filter(c => c.metric === metric && selectedIds.has(c.instance_id));
     const commentMonths = [...new Set(instComments.map(c => c.month))];
 
+    // Check which selected instances have no data for this range
+    const noDataInstances = selected.filter(inst => {
+      const rows = cache[inst.id] || [];
+      // If still loading, don't flag as no-data
+      if (loadingData) return false;
+      // Check if any row has a non-null value for this metric
+      return rows.length === 0 || rows.every(row => row[metric] == null || row[metric] === 0);
+    });
+    const hasAnyData = data.length > 0 && data.some(row =>
+      selected.some(inst => row[inst.id] != null)
+    );
+
     return (
       <div className="chart-card noc-card-corner">
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem" }}>
@@ -266,6 +278,29 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
             </button>
           )}
         </div>
+
+        {/* No data state — shown instead of blank chart */}
+        {!hasAnyData && !loadingData ? (
+          <div style={{
+            height: 200, display:"flex", flexDirection:"column",
+            alignItems:"center", justifyContent:"center", gap:8,
+            border:"1px dashed var(--border)", borderRadius:4,
+          }}>
+            <span style={{ fontFamily:"var(--font-mono)", fontSize:"0.65rem", color:"var(--text-muted)", letterSpacing:"0.1em" }}>
+              NO DATA FOR THIS PERIOD
+            </span>
+            {noDataInstances.length > 0 && noDataInstances.length < selected.length && (
+              <span style={{ fontFamily:"var(--font-mono)", fontSize:"0.58rem", color:"var(--text-muted)", opacity:0.6 }}>
+                {noDataInstances.map(i => getLabel(i.id)).join(", ")} — no readings recorded
+              </span>
+            )}
+            {noDataInstances.length === selected.length && (
+              <span style={{ fontFamily:"var(--font-mono)", fontSize:"0.58rem", color:"var(--text-muted)", opacity:0.6 }}>
+                Instance may have been stopped, or metric not collected for this period
+              </span>
+            )}
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
             <defs>
@@ -295,6 +330,7 @@ export default function Dashboard({ tags, getLabel, comments, onAddComment, onDe
             ))}
           </AreaChart>
         </ResponsiveContainer>
+        )} {/* end no-data conditional */}
         {instComments.length > 0 && (
           <div style={{ marginTop:10, paddingTop:10, borderTop:"1px solid var(--border)" }}>
             {instComments.map(c => (
